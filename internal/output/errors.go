@@ -39,6 +39,9 @@ type Error struct {
 	Message string
 	Hint    string
 	Err     error
+	// Silent errors only set the exit code. The command has already printed
+	// its result, and printing an error too would break the one-JSON-document rule.
+	Silent bool
 }
 
 func (e *Error) Error() string { return e.Message }
@@ -53,6 +56,11 @@ func NewError(code ExitCode, message, hint string) *Error {
 // Usage returns an error for bad usage or input.
 func Usage(message, hint string) *Error {
 	return NewError(ExitUsage, message, hint)
+}
+
+// Exit returns a silent error that only sets the exit code.
+func Exit(code ExitCode, message string) *Error {
+	return &Error{Code: code, Message: message, Silent: true}
 }
 
 // CodeOf returns the exit code for err. Errors that are not *Error map to ExitError.

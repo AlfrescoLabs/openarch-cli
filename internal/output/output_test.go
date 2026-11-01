@@ -88,6 +88,20 @@ func TestErrorText(t *testing.T) {
 	}
 }
 
+func TestSilentError(t *testing.T) {
+	for _, f := range []Format{Text, JSON} {
+		var out, errw bytes.Buffer
+		err := fmt.Errorf("ctx: %w", Exit(ExitPrerequisite, "checks failed"))
+		NewPrinter(f, &out, &errw).Error(err)
+		if out.Len() != 0 || errw.Len() != 0 {
+			t.Errorf("%s: silent error printed stdout=%q stderr=%q", f, out.String(), errw.String())
+		}
+		if CodeOf(err) != ExitPrerequisite {
+			t.Errorf("%s: code = %d", f, CodeOf(err))
+		}
+	}
+}
+
 func TestCodeOf(t *testing.T) {
 	cases := []struct {
 		err  error

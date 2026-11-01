@@ -75,6 +75,9 @@ func (p *Printer) Error(err error) {
 	body := jsonErrorBody{Code: CodeOf(err).Name(), Message: err.Error()}
 	var e *Error
 	if errors.As(err, &e) {
+		if e.Silent {
+			return
+		}
 		body.Hint = e.Hint
 	}
 	if p.format == JSON {

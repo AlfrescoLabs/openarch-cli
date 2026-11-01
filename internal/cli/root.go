@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/term"
 )
@@ -41,6 +42,13 @@ type App struct {
 	Streams Streams
 	Printer *output.Printer
 	Log     *slog.Logger
+
+	// doctorEnv gives doctor access to the system. Tests replace it with a fake.
+	doctorEnv func() doctor.Env
+}
+
+func newApp(s Streams) *App {
+	return &App{Streams: s, doctorEnv: doctor.SystemEnv}
 }
 
 // Interactive reports whether commands may prompt the user.
@@ -69,7 +77,11 @@ func (a *App) setup() error {
 
 // Execute runs the CLI with args and returns the process exit code.
 func Execute(ctx context.Context, args []string, s Streams) int {
-	app := &App{Streams: s}
+	return execute(ctx, newApp(s), args)
+}
+
+func execute(ctx context.Context, app *App, args []string) int {
+	s := app.Streams
 	root := newRootCmd(app)
 	root.SetArgs(args)
 	err := root.ExecuteContext(ctx)
@@ -94,8 +106,9 @@ func newRootCmd(app *App) *cobra.Command {
 Every command supports --output json. Results go to stdout and logs go to stderr.
 Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 4 service not healthy, 5 remote API error, 6 authentication failed.`,
-		Example: `  openarch version
-  openarch version --output json`,
+		Example: `  openarch doctor
+  openarch doctor --output json
+  openarch version`,
 		Args:          noArgs,
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -121,7 +134,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 	pf.BoolVarP(&app.Opts.Verbose, "verbose", "v", false, "print debug logs to stderr")
 	pf.BoolVar(&app.Opts.NoColor, "no-color", false, "disable colors (env NO_COLOR)")
 
-	root.AddCommand(newVersionCmd(app))
+	root.AddCommand(newDoctorCmd(app), newVersionCmd(app))
 	return root
 }
 
