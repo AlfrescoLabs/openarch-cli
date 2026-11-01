@@ -1,0 +1,17 @@
+# Text output
+exec openarch version
+stdout '^openarch '
+stdout 'platform: '
+! stderr .
+
+# JSON output
+exec openarch version --output json
+stdout '"version": '
+stdout '"commit": '
+stdout '"goVersion": '
+! stderr .
+
+# JSON from the environment
+env OPENARCH_OUTPUT=json
+exec openarch version
+stdout '"platform": '

@@ -1,0 +1,15 @@
+# Text errors go to stderr with a hint
+! exec openarch --bogus
+! stdout .
+stderr '^Error: unknown flag: --bogus'
+stderr '^Hint: '
+
+# JSON errors go to stdout as one document
+! exec openarch bogus --output json
+stdout '"code": "usage"'
+stdout '"message": "unknown command \\"bogus\\" for \\"openarch\\""'
+! stderr .
+
+# Invalid output format
+! exec openarch version --output yaml
+stderr 'invalid output format "yaml"'
