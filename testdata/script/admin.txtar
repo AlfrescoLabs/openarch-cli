@@ -1,0 +1,50 @@
+# The API commands run against a mock OpenArch.
+env OPENARCH_URL=$MOCK_URL
+env OPENARCH_USER=admin
+env OPENARCH_PASSWORD=$MOCK_PASSWORD
+
+# api ping
+exec openarch api ping
+stdout 'OpenArch 1.0.90 at http://127.0.0.1:[0-9]+: authenticated as admin'
+
+# query: text and JSON
+exec openarch query 'SELECT * FROM SysFolder'
+stdout '11111111-1111-1111-1111-111111111111  SysFolder  /projects  \(Projects\)'
+stdout '1 to 1 of 1'
+exec openarch query 'SELECT * FROM SysFolder' --sync --output json
+stdout '"sync": "true"'
+stdout '"custom_field": "kept"'
+! exec openarch query 'SELEKT nothing'
+stderr 'HTTP 400 .*missing .SELECT.'
+! exec openarch query 'SELECT * FROM X' --syntax sql
+stderr 'invalid syntax "sql"'
+
+# documents get: by path, by id, root, not found
+exec openarch documents get /projects
+stdout 'path      /projects'
+stdout 'title     Projects'
+exec openarch documents get 11111111-1111-1111-1111-111111111111 --output json
+stdout '"sys_path": "/projects"'
+stdout '"custom_field": "kept"'
+exec openarch documents get /
+stdout 'type      SysRoot'
+! exec openarch documents get /nope
+stderr 'not found: /nope'
+
+# documents create: from flags under a path, from a file under an id
+exec openarch documents create --parent /projects --type SysFolder --name reports --title Reports
+stdout 'path      /projects/reports'
+exec openarch documents create --parent 11111111-1111-1111-1111-111111111111 --file doc.json --output json
+stdout '"sys_path": "/projects/plan"'
+! exec openarch documents create --parent / --name x
+stderr 'no sys_primaryType'
+! exec openarch documents create --type SysFolder
+stderr '--parent is required'
+
+# Wrong password
+env OPENARCH_PASSWORD=wrong
+! exec openarch query 'SELECT * FROM SysFolder'
+stderr 'authentication failed'
+
+-- doc.json --
+{"sys_primaryType": "SysFolder", "sys_name": "plan"}

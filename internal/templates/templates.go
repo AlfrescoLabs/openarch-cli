@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
+	"github.com/AlfrescoLabs/openarch-cli/internal/users"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
@@ -50,6 +51,8 @@ type Input struct {
 	AdminUser        string
 	AdminHash        string
 	OpenSearchHashes OpenSearchHashes
+	// Users is the current users file. Its other users and groups are kept.
+	Users users.File
 }
 
 // OpenSearchHashes are the hashes of the OpenSearch internal users.
@@ -166,6 +169,10 @@ func Render(in Input) ([]File, error) {
 		}
 	}
 	for i := range out {
+		if out[i].Path == users.Path {
+			out[i].Data = users.Build(in.AdminUser, in.AdminHash, in.Users).Marshal()
+			continue
+		}
 		var b bytes.Buffer
 		if err := tmpl.ExecuteTemplate(&b, templateName(out[i].Path), d); err != nil {
 			return nil, fmt.Errorf("render %s: %w", out[i].Path, err)

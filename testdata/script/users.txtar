@@ -1,0 +1,57 @@
+# Users are managed in config/users.yml of a workspace
+exec openarch init --dir ws --non-interactive --memory 4g
+cd ws
+
+exec openarch users list
+stdout '^admin +admin +administrators,members'
+
+stdin $WORK/pw.txt
+exec openarch users add alice --email alice@example.com --password-stdin
+stdout 'Added user alice. Run .openarch up.'
+grep 'username: alice' config/users.yml
+! grep 'Alice-pass-1' config/users.yml
+exec openarch users list --output json
+stdout '"username": "alice"'
+stdout '"admin": false'
+
+# render keeps the users that were added
+exec openarch render
+stdout 'unchanged config/users.yml'
+grep 'username: alice' config/users.yml
+
+# Errors
+stdin $WORK/pw.txt
+! exec openarch users add alice --password-stdin
+stderr 'already exists'
+stdin $WORK/short.txt
+! exec openarch users add bob --password-stdin
+stderr 'too short'
+! exec openarch users add 'bad name' --password-stdin
+stderr 'invalid user name'
+! exec openarch users delete admin --yes
+stderr 'cannot be deleted'
+! exec openarch users delete alice
+stderr 'needs --yes'
+
+# A new admin password changes .env.local too
+stdin $WORK/newadmin.txt
+exec openarch users set-password admin --password-stdin
+grep 'OPENARCH_ADMIN_PASSWORD=New-admin-pass-1' .env.local
+exec openarch render
+stdout 'unchanged config/users.yml'
+
+exec openarch users delete alice --yes
+! grep 'username: alice' config/users.yml
+
+# A workspace with the bundled users has no users file to manage
+cd $WORK
+exec openarch init --dir bundled --default-users --non-interactive --memory 4g
+! exec openarch users list --dir bundled
+stderr 'bundled in the OpenArch image'
+
+-- pw.txt --
+Alice-pass-1
+-- short.txt --
+short
+-- newadmin.txt --
+New-admin-pass-1

@@ -21,6 +21,11 @@ func TestScript(t *testing.T) {
 			// Keep the scripts away from the real CLI config and the OS credential store.
 			env.Setenv("OPENARCH_CONFIG_DIR", filepath.Join(env.WorkDir, ".openarch"))
 			env.Setenv("OPENARCH_CREDENTIAL_STORE", "file")
+			// A mock OpenArch for the commands that call the API.
+			srv := newMockOpenArch()
+			env.Defer(srv.Close)
+			env.Setenv("MOCK_URL", srv.URL)
+			env.Setenv("MOCK_PASSWORD", mockPassword)
 			return nil
 		},
 	})

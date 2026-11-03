@@ -20,6 +20,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/templates"
+	"github.com/AlfrescoLabs/openarch-cli/internal/users"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
@@ -161,9 +162,19 @@ func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets
 	r.Sizing = workspace.SizingFor(budget)
 
 	in := templates.Input{Config: cfg, Sizing: r.Sizing, AdminUser: secrets.AdminUser}
+	if !cfg.DefaultUsers {
+		if in.Users, err = users.Load(dir); err != nil {
+			return err
+		}
+	}
 	// Hashes that still match their password are kept, so that render does not
 	// change files without a reason.
-	adminHashes := existingHashes(dir, usersFile, openArchHashes)
+	adminHashes := map[string]string{}
+	for _, u := range in.Users.Users {
+		if h := users.HashOf(u.Password); h != "" {
+			adminHashes[u.Username] = h
+		}
+	}
 	osHashes := existingHashes(dir, templates.OpenSearchUsersFile, openSearchHashes)
 	for _, h := range []struct {
 		dst      *string
@@ -298,11 +309,9 @@ func planTLS(dir string, cfg workspace.Config, now time.Time) ([]plannedFile, []
 	return nil, nil, nil
 }
 
-const usersFile = "config/users.yml"
-
 // ownedFiles are rendered only for some options. Render deletes them when they are no longer used.
 var ownedFiles = []string{
-	usersFile,
+	users.Path,
 	"config/Caddyfile",
 	"config/opensearch/opensearch.yml",
 	templates.OpenSearchUsersFile,
@@ -317,26 +326,6 @@ func existingHashes(dir, path string, parse func([]byte) map[string]string) map[
 		return nil
 	}
 	return parse(data)
-}
-
-// openArchHashes parses config/users.yml.
-func openArchHashes(data []byte) map[string]string {
-	var f struct {
-		Users []struct {
-			Username string `yaml:"username"`
-			Password string `yaml:"password"`
-		} `yaml:"users"`
-	}
-	if yaml.Unmarshal(data, &f) != nil {
-		return nil
-	}
-	m := map[string]string{}
-	for _, u := range f.Users {
-		if h, ok := strings.CutPrefix(u.Password, "{bcrypt}"); ok {
-			m[u.Username] = h
-		}
-	}
-	return m
 }
 
 // openSearchHashes parses the OpenSearch internal_users.yml.

@@ -26,9 +26,12 @@ Work in progress. These commands work today:
 | `openarch down` | Stops the stack and keeps the data |
 | `openarch api ping` | Checks that OpenArch answers and that the credentials work |
 | `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
+| `openarch query` | Runs a query and lists the documents found |
+| `openarch documents` | Gets and creates documents |
+| `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch version` | Prints the version |
 
-Next: admin commands, a smoke test, backups and upgrades.
+Next: a smoke test, backups and upgrades.
 
 ## Requirements
 
@@ -199,6 +202,41 @@ printf '%s' "$PASSWORD" | openarch api ping --url https://openarch.example.com -
 - Exit code 6 means the credentials are missing or wrong. Exit code 5 means the server cannot be reached
   or returned an error.
 
+## Documents and queries
+
+```
+openarch query "SELECT * FROM SysFolder"
+openarch query "SELECT * FROM SysContent" --limit 50 --sort sys_title --output json
+openarch documents get /                                   # by path: the value starts with /
+openarch documents get dae8e1bb-ef08-44e5-81ae-451d785a3643  # by id
+openarch documents create --parent / --type SysFolder --name projects --title Projects
+openarch documents create --parent /projects --file report.json
+```
+
+- Queries use HxQL, a SQL-like language, by default. `--syntax expr` selects the expression syntax.
+- New documents reach the search index after a short delay. `--sync` makes the query wait for it.
+- With `--output json`, documents and query results are the server responses as they are.
+
+## Users
+
+OpenArch has no API to manage users. It reads them from `config/users.yml` when it starts. The
+`users` commands change that file, and `openarch up` restarts OpenArch to apply the change.
+
+```
+openarch users list
+openarch users add alice --email alice@example.com          # asks for the password
+openarch users add bob --admin --password-stdin < bob.txt
+openarch users set-password alice
+openarch users delete alice
+openarch up                                                 # apply the changes
+```
+
+- Passwords are stored as bcrypt hashes. The passwords of added users are not stored anywhere else.
+- `users set-password admin` also changes `OPENARCH_ADMIN_PASSWORD` in `.env.local`, so the CLI keeps
+  working.
+- `openarch render` keeps every user and group in the file.
+- These commands work on a workspace only, and not with `--default-users`.
+
 ## Saved connections
 
 A context is a saved connection: a local workspace, or the URL and user of a remote OpenArch.
@@ -269,7 +307,7 @@ Security is on by default. Every part can be turned off.
 
 | Part | Default | To turn it off |
 | --- | --- | --- |
-| OpenArch users | Only `admin`, with a generated password. The users bundled in the image are not loaded. | `--default-users` |
+| OpenArch users | Only `admin`, with a generated password. The users bundled in the image are not loaded. Add more with `openarch users add`. | `--default-users` |
 | MongoDB | Authentication on. Users `root` and `openarch` (read and write on its own database only). | `--insecure-backends` |
 | OpenSearch | Security plugin on. Users `admin`, `openarch` (cannot change security settings) and `kibanaserver`. | `--insecure-backends` |
 | OpenSearch Dashboards | Login required. | `--insecure-backends` |
