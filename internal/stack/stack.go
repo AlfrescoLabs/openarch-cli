@@ -418,3 +418,12 @@ func checkAPI(ctx context.Context, dir string, cfg workspace.Config) APICheck {
 	}
 	return res
 }
+
+// writeFile replaces path with data through a temporary file.
+func writeFile(path string, data []byte, mode os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}

@@ -9,6 +9,9 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/smoke"
 )
 
+// smokeIndexTimeout is how long the smoke test waits for the background search index.
+const smokeIndexTimeout = 60 * time.Second
+
 func newSmokeTestCmd(app *App) *cobra.Command {
 	var f connFlags
 	var o smoke.Options
@@ -46,6 +49,6 @@ means the credentials were rejected.`,
 		},
 	}
 	f.register(cmd)
-	cmd.Flags().DurationVar(&o.IndexTimeout, "index-timeout", 60*time.Second, "how long to wait for the background search index")
+	cmd.Flags().DurationVar(&o.IndexTimeout, "index-timeout", smokeIndexTimeout, "how long to wait for the background search index")
 	return cmd
 }
