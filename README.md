@@ -29,9 +29,10 @@ Work in progress. These commands work today:
 | `openarch query` | Runs a query and lists the documents found |
 | `openarch documents` | Gets and creates documents |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
+| `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
 | `openarch version` | Prints the version |
 
-Next: a smoke test, backups and upgrades.
+Next: backups, restores, upgrades and password rotation.
 
 ## Requirements
 
@@ -216,6 +217,20 @@ openarch documents create --parent /projects --file report.json
 - Queries use HxQL, a SQL-like language, by default. `--syntax expr` selects the expression syntax.
 - New documents reach the search index after a short delay. `--sync` makes the query wait for it.
 - With `--output json`, documents and query results are the server responses as they are.
+
+## Smoke test
+
+`openarch smoke-test` creates a folder under the root, reads it by id and by path, finds it with a
+query and in the background search index, deletes it, and checks that it is gone. It reports each
+step, and deletes the folder even when a step fails.
+
+```
+openarch smoke-test
+openarch smoke-test --context prod --output json
+```
+
+Exit code 0 means every step passed. Exit code 4 means a step failed, and 6 means the credentials were
+rejected. `--index-timeout` (default 60s) sets how long to wait for the search index.
 
 ## Users
 

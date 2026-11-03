@@ -105,6 +105,9 @@ func redact(h http.Header) map[string]string {
 	return out
 }
 
+// URL returns the server URL.
+func (c *Client) URL() string { return c.creds.URL }
+
 // Check maps an HTTP status to a CLI error. 401 and 403 are authentication
 // errors (exit code 6); other non-2xx statuses are remote errors (exit code 5).
 func (c *Client) Check(status int, what string) error {

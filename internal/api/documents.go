@@ -15,6 +15,9 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 )
 
+// ErrNotFound is wrapped by the errors of calls that got HTTP 404.
+var ErrNotFound = errors.New("not found")
+
 // Document is a document as returned by OpenArch. It is kept as raw JSON, so
 // that no property is lost, with the fields the CLI shows in text mode decoded.
 type Document struct {
@@ -124,7 +127,21 @@ func (c *Client) checkBody(status int, body []byte, what string) error {
 			}
 		}
 	}
+	var oerr *output.Error
+	if status == http.StatusNotFound && errors.As(err, &oerr) {
+		oerr.Err = ErrNotFound
+	}
 	return err
+}
+
+// DeleteDocument deletes a document by id.
+func (c *Client) DeleteDocument(ctx context.Context, id string) error {
+	what := "delete document " + id
+	resp, err := c.Gen.DeleteDocumentByIdWithResponse(ctx, id, &gen.DeleteDocumentByIdParams{})
+	if err != nil {
+		return c.Transport(err, what)
+	}
+	return c.checkBody(resp.StatusCode(), resp.Body, what)
 }
 
 // GetDocument returns a document by id, or by path when ref starts with "/".

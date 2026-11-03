@@ -41,10 +41,21 @@ stderr 'no sys_primaryType'
 ! exec openarch documents create --type SysFolder
 stderr '--parent is required'
 
+# smoke-test: every step passes, and JSON has the pass/fail list
+exec openarch smoke-test
+stdout '\[pass\] verify-delete'
+stdout '8 pass, 0 fail, 0 skip'
+exec openarch smoke-test --output json
+stdout '"id": "index",\s*$'
+stdout '"fail": 0'
+
 # Wrong password
 env OPENARCH_PASSWORD=wrong
 ! exec openarch query 'SELECT * FROM SysFolder'
 stderr 'authentication failed'
+! exec openarch smoke-test
+stdout '\[fail\] ping'
+stdout '\[skip\] create'
 
 -- doc.json --
 {"sys_primaryType": "SysFolder", "sys_name": "plan"}

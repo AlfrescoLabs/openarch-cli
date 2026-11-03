@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 )
 
 // Credentials accepted by the mock OpenArch.
@@ -69,6 +71,16 @@ func newMockOpenArch() *httptest.Server {
 				return
 			}
 			list := []map[string]any{docs["/projects"]}
+			// The smoke test filters by name: WHERE sys_name = '<name>'.
+			if _, after, ok := strings.Cut(q.Query, "sys_name = '"); ok {
+				name, _, _ := strings.Cut(after, "'")
+				list = []map[string]any{}
+				for _, d := range docs {
+					if d["sys_name"] == name {
+						list = append(list, d)
+					}
+				}
+			}
 			writeJSON(w, http.StatusOK, map[string]any{"query": q.Query, "limit": q.Limit, "offset": 0,
 				"documents": list, "count": len(list), "totalCount": len(list), "sync": r.URL.Query().Get("sync")})
 		case strings.HasPrefix(r.URL.Path, "/api/documents/path/"):
@@ -95,16 +107,23 @@ func newMockOpenArch() *httptest.Server {
 				notFound(w, id)
 				return
 			}
-			if r.Method == http.MethodPost {
+			switch r.Method {
+			case http.MethodPost:
 				create(w, r, docs, d)
-				return
+			case http.MethodDelete:
+				delete(docs, d["sys_path"].(string))
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				writeJSON(w, http.StatusOK, d)
 			}
-			writeJSON(w, http.StatusOK, d)
 		default:
 			http.NotFound(w, r)
 		}
 	}))
 }
+
+// mockSeq numbers the documents the mock creates. Scripts run in parallel, so it is atomic.
+var mockSeq atomic.Int64
 
 func create(w http.ResponseWriter, r *http.Request, docs map[string]map[string]any, parent map[string]any) {
 	data, _ := io.ReadAll(r.Body)
@@ -116,7 +135,7 @@ func create(w http.ResponseWriter, r *http.Request, docs map[string]map[string]a
 	name, _ := body["sys_name"].(string)
 	path := strings.TrimSuffix(parent["sys_path"].(string), "/") + "/" + name
 	title, _ := body["sys_title"].(string)
-	d := mockDoc("22222222-2222-2222-2222-222222222222", body["sys_primaryType"].(string), path, title)
+	d := mockDoc(fmt.Sprintf("22222222-2222-2222-2222-%012d", mockSeq.Add(1)), body["sys_primaryType"].(string), path, title)
 	docs[path] = d
 	writeJSON(w, http.StatusOK, d)
 }
