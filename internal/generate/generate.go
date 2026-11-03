@@ -81,6 +81,8 @@ type Result struct {
 	Sizing       workspace.Sizing `json:"sizing"`
 	Files        []FileResult     `json:"files"`
 	Folders      []string         `json:"folders,omitempty"`
+	// Context is the name of the CLI context that points to the workspace. init sets it.
+	Context string `json:"context,omitempty"`
 	// Warnings go to stderr, never to stdout.
 	Warnings []string `json:"-"`
 }
@@ -444,6 +446,9 @@ func (r Result) WriteText(w io.Writer) error {
 	}
 	fmt.Fprintf(&b, "\nOpenArch URL: %s\n", r.URL)
 	fmt.Fprintf(&b, "Admin user:   %s (password in %s)\n", r.AdminUser, r.PasswordFile)
+	if r.Context != "" {
+		fmt.Fprintf(&b, "Context:      %s\n", r.Context)
+	}
 	if !r.DryRun {
 		fmt.Fprintf(&b, "\nStart it with: openarch up --dir %s\n", r.Workspace)
 	}

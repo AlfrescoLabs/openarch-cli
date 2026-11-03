@@ -3,12 +3,16 @@ package cli
 import (
 	"bufio"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/AlfrescoLabs/openarch-cli/internal/api"
 	"github.com/AlfrescoLabs/openarch-cli/internal/auth"
+	"github.com/AlfrescoLabs/openarch-cli/internal/contexts"
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
+	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/term"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
@@ -37,10 +41,15 @@ func (a *App) client(cmd *cobra.Command, f *connFlags) (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg, err := a.contexts()
+	if err != nil {
+		return nil, err
+	}
 	in := auth.Input{
 		URL: f.url, User: f.user, Password: f.password, PasswordStdin: f.passwordStdin,
 		Insecure: f.insecure, InsecureSet: cmd.Flags().Changed("insecure"),
 		Stdin: a.Streams.In, WorkspaceDir: dir,
+		Context: a.Opts.Context, Contexts: &cfg, Store: a.store,
 	}
 	if a.Interactive() && !f.passwordStdin {
 		in.Prompt = func(label string, secret bool) (string, error) {
@@ -57,10 +66,15 @@ func (a *App) client(cmd *cobra.Command, f *connFlags) (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	return a.newClient(creds)
+}
+
+// newClient warns about --insecure and returns a client for creds.
+func (a *App) newClient(creds auth.Credentials) (*api.Client, error) {
 	if creds.Insecure {
 		a.Printer.Warn("TLS certificate verification is off (--insecure).")
 	}
-	a.Log.Debug("credentials", "url", creds.URL, "user", creds.User,
+	a.Log.Debug("credentials", "context", creds.Context, "url", creds.URL, "user", creds.User,
 		"urlSource", string(creds.Sources.URL), "userSource", string(creds.Sources.User), "passwordSource", string(creds.Sources.Password))
 	return api.New(creds, a.Log)
 }
@@ -102,6 +116,50 @@ Exit code 6 means the credentials are missing or wrong.`,
 		},
 	})
 	return cmd
+}
+
+// configDir returns the CLI config folder.
+func (a *App) configDir() (string, error) {
+	return contexts.Dir(os.Getenv)
+}
+
+// contexts loads the CLI config file.
+func (a *App) contexts() (contexts.Config, error) {
+	dir, err := a.configDir()
+	if err != nil {
+		return contexts.Config{}, err
+	}
+	return contexts.Load(dir)
+}
+
+// store opens the credential store once per command.
+func (a *App) store() (credstore.Store, error) {
+	if a.credStore != nil {
+		return a.credStore, nil
+	}
+	dir, err := a.configDir()
+	if err != nil {
+		return nil, err
+	}
+	st, err := credstore.Open(dir, os.Getenv, a.Printer.Warn)
+	if err != nil {
+		return nil, output.Usage(err.Error(), "")
+	}
+	a.credStore = st
+	return st, nil
+}
+
+// readSecret reads an existing password from stdin. One trailing newline is removed.
+func readSecret(r io.Reader) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(r, 4096))
+	if err != nil {
+		return "", err
+	}
+	pw := strings.TrimSuffix(strings.TrimSuffix(string(data), "\n"), "\r")
+	if pw == "" {
+		return "", output.Usage("the password from stdin is empty", "")
+	}
+	return pw, nil
 }
 
 // readPromptLine asks for a visible value on the terminal.

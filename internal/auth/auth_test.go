@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/contexts"
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
@@ -119,6 +121,73 @@ func TestDescribeHasNoPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	if d := c.Describe(); strings.Contains(d, c.Password) || !strings.Contains(d, ".env.local") {
+		t.Errorf("Describe = %q", d)
+	}
+}
+
+func remoteContexts(current string) *contexts.Config {
+	return &contexts.Config{CurrentContext: current, Contexts: map[string]contexts.Context{
+		"prod": {Endpoints: map[string]contexts.Endpoint{contexts.SystemOpenArch: {URL: "https://prod.example.com", Username: "ops", Insecure: true}}},
+	}}
+}
+
+func memStore(t *testing.T) func() (credstore.Store, error) {
+	t.Helper()
+	m := &credstore.Memory{}
+	if err := m.Set("https://prod.example.com", "ops", "stored-pw"); err != nil {
+		t.Fatal(err)
+	}
+	return func() (credstore.Store, error) { return m, nil }
+}
+
+func TestRemoteContext(t *testing.T) {
+	c, err := Resolve(Input{Getenv: env(nil), Contexts: remoteContexts("prod"), Store: memStore(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.URL != "https://prod.example.com" || c.User != "ops" || c.Password != "stored-pw" || !c.Insecure || c.Context != "prod" || c.Sources.Password != SourceContext {
+		t.Errorf("credentials = %+v", c)
+	}
+	// The stored password belongs to its URL and user only.
+	_, err = Resolve(Input{Getenv: env(nil), Contexts: remoteContexts("prod"), Store: memStore(t), URL: "https://other.example.com", User: "ops"})
+	if output.CodeOf(err) != output.ExitAuth {
+		t.Errorf("stored password sent to another URL: %v", err)
+	}
+	_, err = Resolve(Input{Getenv: env(nil), Contexts: remoteContexts("prod"), Store: memStore(t), User: "someone"})
+	if output.CodeOf(err) != output.ExitAuth {
+		t.Errorf("stored password used for another user: %v", err)
+	}
+}
+
+func TestContextOrder(t *testing.T) {
+	dir := testWorkspace(t)
+	// The workspace in --dir or the current folder wins over the current context.
+	c, err := Resolve(Input{Getenv: env(nil), WorkspaceDir: dir, Contexts: remoteContexts("prod"), Store: memStore(t)})
+	if err != nil || c.Sources.URL != SourceWorkspace {
+		t.Errorf("workspace vs current context: %+v, %v", c, err)
+	}
+	// An explicit context wins over the workspace, from the flag or the env var.
+	c, err = Resolve(Input{Getenv: env(nil), WorkspaceDir: dir, Context: "prod", Contexts: remoteContexts(""), Store: memStore(t)})
+	if err != nil || c.Context != "prod" {
+		t.Errorf("--context: %+v, %v", c, err)
+	}
+	c, err = Resolve(Input{Getenv: env(map[string]string{contexts.EnvContext: "prod"}), WorkspaceDir: dir, Contexts: remoteContexts(""), Store: memStore(t)})
+	if err != nil || c.Context != "prod" {
+		t.Errorf("OPENARCH_CONTEXT: %+v, %v", c, err)
+	}
+	if _, err := Resolve(Input{Getenv: env(nil), Context: "nope", Contexts: remoteContexts("")}); output.CodeOf(err) != output.ExitUsage {
+		t.Errorf("unknown context: %v", err)
+	}
+}
+
+func TestWorkspaceContext(t *testing.T) {
+	dir := testWorkspace(t)
+	cfg := &contexts.Config{CurrentContext: "local", Contexts: map[string]contexts.Context{"local": {Workspace: dir}}}
+	c, err := Resolve(Input{Getenv: env(nil), Contexts: cfg})
+	if err != nil || c.Password != "ws-password" || c.Workspace != dir || c.Context != "local" || c.DialAddr == "" {
+		t.Errorf("credentials = %+v, %v", c, err)
+	}
+	if d := c.Describe(); !strings.Contains(d, `context "local"`) || strings.Contains(d, "ws-password") {
 		t.Errorf("Describe = %q", d)
 	}
 }

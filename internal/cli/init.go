@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/contexts"
 	"github.com/AlfrescoLabs/openarch-cli/internal/generate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
@@ -23,6 +24,7 @@ var optionFlags = []string{
 
 type initFlags struct {
 	cfg           workspace.Config
+	contextName   string
 	from          string
 	passwordStdin bool
 	force         bool
@@ -97,6 +99,9 @@ prompts that work with screen readers.`,
 			if err != nil {
 				return err
 			}
+			if !opts.DryRun {
+				res.Context = app.registerWorkspace(dir, opts.Config.Name, f.contextName, cmd.Flags().Changed("context-name"))
+			}
 			return app.printResult(res)
 		},
 	}
@@ -119,6 +124,7 @@ prompts that work with screen readers.`,
 	fl.BoolVar(&f.passwordStdin, "admin-password-stdin", false, "read the admin password from stdin")
 	fl.BoolVar(&f.force, "force", false, "overwrite an existing workspace (keeps the passwords in .env.local unless a new admin password is given)")
 	fl.BoolVar(&f.dryRun, "dry-run", false, "list the files that would be written, and write nothing")
+	fl.StringVar(&f.contextName, "context-name", DefaultWorkspaceContext, "name of the context that points to this workspace")
 	return cmd
 }
 
@@ -226,6 +232,50 @@ shown in the diff.`,
 	}
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "show what would change, and write nothing")
 	return cmd
+}
+
+// DefaultWorkspaceContext is the context name init gives a workspace.
+const DefaultWorkspaceContext = "local"
+
+// registerWorkspace saves a context that points to the workspace in dir, and
+// returns its name. A problem is only a warning: the workspace itself is fine.
+// When the default name is taken by another workspace, the project name is used.
+func (a *App) registerWorkspace(dir, project, name string, explicit bool) string {
+	cfg, err := a.contexts()
+	if err != nil {
+		a.Printer.Warn("The workspace was not saved as a context: " + err.Error())
+		return ""
+	}
+	if existing := cfg.NameForWorkspace(dir); existing != "" {
+		return existing
+	}
+	if err := contexts.ValidateName(name); err != nil {
+		a.Printer.Warn("The workspace was not saved as a context: " + err.Error())
+		return ""
+	}
+	if _, taken := cfg.Contexts[name]; taken {
+		if explicit {
+			a.Printer.Warn(fmt.Sprintf("Context %q already exists, so the workspace was not saved as a context. Use another --context-name.", name))
+			return ""
+		}
+		name = project
+		if _, taken := cfg.Contexts[name]; taken || contexts.ValidateName(name) != nil {
+			a.Printer.Warn("The workspace was not saved as a context: the names local and " + project + " are taken. Use --context-name.")
+			return ""
+		}
+	}
+	if cfg.Contexts == nil {
+		cfg.Contexts = map[string]contexts.Context{}
+	}
+	cfg.Contexts[name] = contexts.Context{Workspace: dir}
+	if cfg.CurrentContext == "" {
+		cfg.CurrentContext = name
+	}
+	if err := a.saveContexts(cfg); err != nil {
+		a.Printer.Warn("The workspace was not saved as a context: " + err.Error())
+		return ""
+	}
+	return name
 }
 
 func (a *App) printResult(res generate.Result) error {

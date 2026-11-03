@@ -1,8 +1,11 @@
 // Package auth finds the OpenArch URL and credentials of a command.
 //
 // For each value, the first source that has one wins: flags, then environment
-// variables, then the workspace, then a hidden prompt. Workspace credentials
-// are used only for the workspace URL, so they are never sent to another server.
+// variables, then a base connection, then a hidden prompt. The base connection
+// is a context chosen with --context or OPENARCH_CONTEXT, else the workspace
+// found with --dir or in the current folder, else the current context.
+// Credentials of the base connection are used only for its own URL, so they
+// are never sent to another server.
 package auth
 
 import (
@@ -15,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/contexts"
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/templates"
@@ -37,6 +42,7 @@ const (
 	SourceFlag      Source = "flag"
 	SourceEnv       Source = "env"
 	SourceWorkspace Source = "workspace"
+	SourceContext   Source = "context"
 	SourcePrompt    Source = "prompt"
 	SourceDefault   Source = "default"
 )
@@ -57,6 +63,8 @@ type Credentials struct {
 	Sources  Sources
 	// Workspace is the workspace folder, when the URL came from it.
 	Workspace string
+	// Context is the name of the context used, if any.
+	Context string
 	// DialAddr, when set, is the host:port to connect to instead of the URL host.
 	// A workspace URL can use a server name that does not resolve on this machine.
 	DialAddr string
@@ -78,6 +86,29 @@ type Input struct {
 	WorkspaceDir string
 	// Prompt asks for a value. Nil when the command cannot prompt.
 	Prompt func(label string, secret bool) (string, error)
+	// Context is the --context flag. The OPENARCH_CONTEXT variable is read with Getenv.
+	Context string
+	// Contexts is the CLI config. Nil means no contexts.
+	Contexts *contexts.Config
+	// Store opens the credential store, for passwords of remote contexts.
+	Store func() (credstore.Store, error)
+	// AllowNoPassword returns the credentials even when no password is found.
+	AllowNoPassword bool
+}
+
+// base is the connection of a context or a workspace.
+type base struct {
+	source    Source
+	url       string
+	user      string
+	password  string
+	insecure  bool
+	workspace string
+	context   string
+	dialAddr  string
+	rootCA    []byte
+	// lookup reads the password of a remote context from the store, for a given user.
+	lookup func(user string) (string, error)
 }
 
 // Resolve finds the URL, user and password.
@@ -87,6 +118,10 @@ func Resolve(in Input) (Credentials, error) {
 		getenv = os.Getenv
 	}
 	var c Credentials
+	b, err := findBase(in, getenv)
+	if err != nil {
+		return c, err
+	}
 
 	// URL
 	switch {
@@ -94,26 +129,21 @@ func Resolve(in Input) (Credentials, error) {
 		c.URL, c.Sources.URL = in.URL, SourceFlag
 	case getenv(EnvURL) != "":
 		c.URL, c.Sources.URL = getenv(EnvURL), SourceEnv
-	}
-	var ws *workspaceInfo
-	if c.URL == "" && in.WorkspaceDir != "" {
-		info, err := loadWorkspace(in.WorkspaceDir)
-		if err != nil {
-			return c, err
-		}
-		if info != nil {
-			ws = info
-			c.URL, c.Sources.URL = info.cfg.URL(), SourceWorkspace
-			c.Workspace, c.DialAddr, c.RootCAPEM = info.dir, info.dialAddr(), info.rootCA
-		}
+	case b != nil:
+		c.URL, c.Sources.URL = b.url, b.source
+		c.Workspace, c.Context, c.DialAddr, c.RootCAPEM = b.workspace, b.context, b.dialAddr, b.rootCA
 	}
 	if c.URL == "" {
 		return c, output.Usage("no OpenArch URL",
-			"Run the command inside a workspace, use --dir, or set --url or "+EnvURL+".")
+			"Run the command inside a workspace, use --dir or --context, or set --url or "+EnvURL+".")
 	}
 	c.URL = strings.TrimSuffix(c.URL, "/")
 	if !strings.HasPrefix(c.URL, "http://") && !strings.HasPrefix(c.URL, "https://") {
 		return c, output.Usage(fmt.Sprintf("invalid URL %q", c.URL), "Use a URL such as http://localhost:8080.")
+	}
+	// The base credentials belong to the base URL only.
+	if b != nil && c.Sources.URL != b.source {
+		b = nil
 	}
 
 	// User
@@ -122,8 +152,8 @@ func Resolve(in Input) (Credentials, error) {
 		c.User, c.Sources.User = in.User, SourceFlag
 	case getenv(EnvUser) != "":
 		c.User, c.Sources.User = getenv(EnvUser), SourceEnv
-	case ws != nil && ws.secrets.AdminUser != "":
-		c.User, c.Sources.User = ws.secrets.AdminUser, SourceWorkspace
+	case b != nil && b.user != "":
+		c.User, c.Sources.User = b.user, b.source
 	case in.Prompt != nil:
 		u, err := in.Prompt("User: ", false)
 		if err != nil {
@@ -147,31 +177,98 @@ func Resolve(in Input) (Credentials, error) {
 		c.Password, c.Sources.Password = in.Password, SourceFlag
 	case getenv(EnvPassword) != "":
 		c.Password, c.Sources.Password = getenv(EnvPassword), SourceEnv
-	case ws != nil && ws.secrets.AdminPassword != "" && c.User == ws.secrets.AdminUser:
-		c.Password, c.Sources.Password = ws.secrets.AdminPassword, SourceWorkspace
-	case in.Prompt != nil:
+	case b != nil && b.password != "" && c.User == b.user:
+		c.Password, c.Sources.Password = b.password, b.source
+	case b != nil && b.lookup != nil:
+		pw, err := b.lookup(c.User)
+		if err != nil && !errors.Is(err, credstore.ErrNotFound) {
+			return c, output.NewError(output.ExitAuth, "cannot read the stored password: "+err.Error(), "")
+		}
+		if pw != "" {
+			c.Password, c.Sources.Password = pw, b.source
+		}
+	}
+	if c.Password == "" && in.Prompt != nil {
 		pw, err := in.Prompt(fmt.Sprintf("Password for %s at %s: ", c.User, c.URL), true)
 		if err != nil {
 			return c, err
 		}
 		c.Password, c.Sources.Password = pw, SourcePrompt
 	}
-	if c.Password == "" {
+	if c.Password == "" && !in.AllowNoPassword {
 		return c, output.NewError(output.ExitAuth, "no password for "+c.User+" at "+c.URL,
-			"Use --password-stdin or "+EnvPassword+", or run in a terminal to be asked.")
+			"Use --password-stdin or "+EnvPassword+", save it with 'openarch config set', or run in a terminal to be asked.")
 	}
 
 	// Insecure
-	if in.InsecureSet {
+	switch {
+	case in.InsecureSet:
 		c.Insecure = in.Insecure
-	} else if v := getenv(EnvInsecure); v != "" {
-		b, err := strconv.ParseBool(v)
+	case getenv(EnvInsecure) != "":
+		v, err := strconv.ParseBool(getenv(EnvInsecure))
 		if err != nil {
-			return c, output.Usage(fmt.Sprintf("invalid %s: %q", EnvInsecure, v), "Use true or false.")
+			return c, output.Usage(fmt.Sprintf("invalid %s: %q", EnvInsecure, getenv(EnvInsecure)), "Use true or false.")
 		}
-		c.Insecure = b
+		c.Insecure = v
+	case b != nil:
+		c.Insecure = b.insecure
 	}
 	return c, nil
+}
+
+// findBase returns the base connection, or nil when there is none.
+func findBase(in Input, getenv func(string) string) (*base, error) {
+	name, explicit := in.Context, in.Context != ""
+	if name == "" {
+		name, explicit = getenv(contexts.EnvContext), getenv(contexts.EnvContext) != ""
+	}
+	if !explicit && in.WorkspaceDir != "" {
+		info, err := loadWorkspace(in.WorkspaceDir)
+		if err != nil || info != nil {
+			return info.base(SourceWorkspace, ""), err
+		}
+	}
+	if !explicit && in.Contexts != nil {
+		name = in.Contexts.CurrentContext
+	}
+	if name == "" {
+		return nil, nil
+	}
+	cfg := in.Contexts
+	if cfg == nil {
+		cfg = &contexts.Config{}
+	}
+	ctx, err := cfg.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Workspace != "" {
+		info, err := loadWorkspace(ctx.Workspace)
+		if err != nil {
+			return nil, err
+		}
+		if info == nil {
+			return nil, output.Usage(fmt.Sprintf("context %q points to %s, which has no %s", name, ctx.Workspace, workspace.ConfigFile),
+				"Delete it with 'openarch config delete "+name+"'.")
+		}
+		return info.base(SourceContext, name), nil
+	}
+	ep, ok := ctx.Endpoints[contexts.SystemOpenArch]
+	if !ok {
+		return nil, output.Usage(fmt.Sprintf("context %q has no OpenArch endpoint", name), "Add one with 'openarch config set --name "+name+"'.")
+	}
+	b := &base{source: SourceContext, context: name, url: ep.URL, user: ep.Username, insecure: ep.Insecure}
+	if in.Store != nil {
+		url := strings.TrimSuffix(ep.URL, "/")
+		b.lookup = func(user string) (string, error) {
+			st, err := in.Store()
+			if err != nil {
+				return "", err
+			}
+			return st.Get(url, user)
+		}
+	}
+	return b, nil
 }
 
 // Describe says where the credentials came from, for error hints. It never shows the password.
@@ -179,6 +276,11 @@ func (c Credentials) Describe() string {
 	switch c.Sources.Password {
 	case SourceWorkspace:
 		return fmt.Sprintf("user %s and password from the workspace %s (%s)", c.User, c.Workspace, localenv.File)
+	case SourceContext:
+		if c.Workspace != "" {
+			return fmt.Sprintf("user %s and password from context %q (workspace %s)", c.User, c.Context, c.Workspace)
+		}
+		return fmt.Sprintf("user %s and the stored password of context %q", c.User, c.Context)
 	case SourceEnv:
 		return fmt.Sprintf("user %s (%s), password from %s", c.User, c.Sources.User, EnvPassword)
 	case SourcePrompt:
@@ -235,6 +337,14 @@ func loadWorkspace(dir string) (*workspaceInfo, error) {
 		info.rootCA, _ = os.ReadFile(p)
 	}
 	return info, nil
+}
+
+func (w *workspaceInfo) base(source Source, context string) *base {
+	if w == nil {
+		return nil
+	}
+	return &base{source: source, context: context, workspace: w.dir, url: w.cfg.URL(),
+		user: w.secrets.AdminUser, password: w.secrets.AdminPassword, dialAddr: w.dialAddr(), rootCA: w.rootCA}
 }
 
 // dialAddr is the published port on this machine.

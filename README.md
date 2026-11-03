@@ -25,9 +25,10 @@ Work in progress. These commands work today:
 | `openarch logs` | Shows the logs of the services |
 | `openarch down` | Stops the stack and keeps the data |
 | `openarch api ping` | Checks that OpenArch answers and that the credentials work |
+| `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
 | `openarch version` | Prints the version |
 
-Next: saved connections, admin commands, a smoke test, backups and upgrades.
+Next: admin commands, a smoke test, backups and upgrades.
 
 ## Requirements
 
@@ -175,11 +176,15 @@ Commands that call the API, such as `openarch api ping`, find the URL, user and 
 1. Flags: `--url`, `--user`, `--password-stdin`. `--password` works too, but it prints a warning,
    because the password stays in the shell history.
 2. Environment variables: `OPENARCH_URL`, `OPENARCH_USER`, `OPENARCH_PASSWORD`.
-3. The workspace: the URL from `openarch.yaml` and the admin user and password from `.env.local`.
-4. A hidden prompt, when the command runs in a terminal.
+3. A saved connection (a context, see below) chosen with `--context` or `OPENARCH_CONTEXT`.
+4. The workspace in `--dir` or in the current folder: the URL from `openarch.yaml`, and the admin user
+   and password from `.env.local`.
+5. The current context.
+6. A hidden prompt, when the command runs in a terminal.
 
-The first source that has a value wins, for each value. Workspace credentials are used only with the
-workspace URL, so they are never sent to another server.
+The first source that has a value wins, for each value. The user and password of a context or a
+workspace are used only with its own URL, so they are never sent to another server.
+`openarch config whoami` shows which source gave each value. It never shows the password.
 
 ```
 openarch api ping                                  # inside a workspace: no flags needed
@@ -193,6 +198,33 @@ printf '%s' "$PASSWORD" | openarch api ping --url https://openarch.example.com -
 - `--verbose` logs each request, with the `Authorization` header replaced by `REDACTED`.
 - Exit code 6 means the credentials are missing or wrong. Exit code 5 means the server cannot be reached
   or returned an error.
+
+## Saved connections
+
+A context is a saved connection: a local workspace, or the URL and user of a remote OpenArch.
+
+```
+openarch config set --name prod -s https://openarch.example.com -u admin   # asks for the password
+openarch config list
+openarch config use prod
+openarch api ping                                  # uses the current context
+openarch api ping --context local                  # or any context, from any folder
+openarch config get --name prod                    # the password is masked
+openarch config delete prod                        # also removes the stored password
+```
+
+- `openarch init` saves each workspace as a context: `local` for the first one, then the workspace
+  name. Use `--context-name` to choose the name.
+- `config set` checks the connection before it saves it. `--no-verify` skips the check. The password
+  comes from a hidden prompt or `--password-stdin`, never from a command argument.
+- Contexts are in `config.yaml`, in `~/.config/openarch` (or `$XDG_CONFIG_HOME/openarch`, or
+  `%AppData%\openarch` on Windows, or `OPENARCH_CONFIG_DIR`). That file never holds a password.
+- Passwords are in the OS credential store: Keychain on macOS, Credential Manager on Windows, and Secret
+  Service on Linux. When the OS store is not available (for example, on a Linux server with no
+  desktop), they are in `credentials.json` (mode 0600) in the same folder, with a warning.
+  `OPENARCH_CREDENTIAL_STORE=keychain` or `file` forces a backend.
+- `config get --show-secrets` shows the passwords.
+- Without a terminal, `config delete` needs `--yes`.
 
 ## Workspace files
 

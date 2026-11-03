@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
 	"github.com/AlfrescoLabs/openarch-cli/internal/generate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
@@ -49,6 +50,8 @@ type App struct {
 	doctorEnv   func() doctor.Env
 	generateEnv func() generate.Env
 	stackEnv    func() stack.Env
+	// credStore is opened on first use. Tests set it to a memory store.
+	credStore credstore.Store
 }
 
 func newApp(s Streams) *App {
@@ -142,7 +145,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 	pf.BoolVar(&app.Opts.NoColor, "no-color", false, "disable colors (env NO_COLOR)")
 
 	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
-		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newAPICmd(app), newVersionCmd(app))
+		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newAPICmd(app), newConfigCmd(app), newVersionCmd(app))
 	return root
 }
 

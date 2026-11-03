@@ -1,0 +1,73 @@
+# No contexts yet
+exec openarch config list
+stdout 'No contexts'
+
+# Save a remote context without checking it (no server in tests)
+stdin password.txt
+exec openarch config set --name prod -s https://openarch.example.com/ -u admin --password-stdin --no-verify
+stdout 'Saved context "prod": https://openarch.example.com as admin \(not verified\). Password in the file store. It is the current context.'
+! stdout 'Remote-pass-1'
+exists $WORK/.openarch/config.yaml
+grep 'url: https://openarch.example.com' $WORK/.openarch/config.yaml
+! grep 'Remote-pass-1' $WORK/.openarch/config.yaml
+grep '"password": "Remote-pass-1"' $WORK/.openarch/credentials.json
+
+# get masks the password unless --show-secrets is set
+exec openarch config get
+stdout 'password  \*\*\*\*\*\*\*\*'
+! stdout 'Remote-pass-1'
+exec openarch config get --name prod --show-secrets --output json
+stdout '"password": "Remote-pass-1"'
+
+# whoami shows the sources and never the password
+exec openarch config whoami
+stdout 'url       https://openarch.example.com  \(from context prod\)'
+stdout 'password  set  \(from context prod\)'
+! stdout 'Remote-pass-1'
+env OPENARCH_USER=other
+exec openarch config whoami --output json
+stdout '"user": "other"'
+stdout '"hasPassword": false'
+env OPENARCH_USER=
+
+# init registers the workspace as context "local"; the current context stays prod
+exec openarch init --dir ws --non-interactive --memory 4g
+stdout 'Context:      local'
+exec openarch config list
+stdout '^\* prod +remote +https://openarch.example.com as admin'
+stdout '^  local +workspace +.*ws$'
+
+# Inside the workspace, the workspace wins over the current context
+cd ws
+exec openarch config whoami
+stdout 'url       http://localhost:8080  \(from workspace '
+# An explicit context wins over the workspace
+exec openarch config whoami --context prod
+stdout 'from context prod'
+cd $WORK
+
+# A second workspace gets its project name, because "local" is taken
+exec openarch init --dir second --non-interactive --memory 4g
+stdout 'Context:      second'
+
+# use and delete
+exec openarch config use local
+stdout 'Current context: local'
+! exec openarch config delete prod
+stderr 'needs --yes'
+exec openarch config delete prod --yes
+! grep 'Remote-pass-1' $WORK/.openarch/credentials.json
+! grep 'prod' $WORK/.openarch/config.yaml
+! exec openarch config use prod
+stderr 'unknown context "prod"'
+
+# Errors
+! exec openarch config set -s https://x -u admin --no-verify
+stderr 'no password'
+! exec openarch config set --name 'bad name' -s https://x -u admin --no-verify
+stderr 'invalid context name'
+! exec openarch config set --system alfresco -s https://x -u admin --no-verify
+stderr 'unknown system "alfresco"'
+
+-- password.txt --
+Remote-pass-1
