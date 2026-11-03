@@ -30,7 +30,11 @@ type initFlags struct {
 }
 
 func newInitCmd(app *App) *cobra.Command {
-	var f initFlags
+	return initCmd(app, &initFlags{})
+}
+
+// initCmd builds the init command with its flags bound to f.
+func initCmd(app *App, f *initFlags) *cobra.Command {
 	def := workspace.Default("")
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -45,7 +49,12 @@ The workspace is the folder given by --dir, then OPENARCH_WORKSPACE, then the
 current folder. It is created if needed.
 
 The admin password is generated unless it is read from stdin with
---admin-password-stdin. It is stored in .env.local and never printed.`,
+--admin-password-stdin. It is stored in .env.local and never printed.
+
+In a terminal, init asks for every option that was not given as a flag, then
+prints the equivalent non-interactive command. --non-interactive, --from or a
+missing terminal turn the questions off. Set ` + envAccessible + `=1 for plain
+prompts that work with screen readers.`,
 		Example: `  openarch init --dir my-openarch
   openarch init --storage bind --data-dir /srv/openarch
   openarch init --tls self-signed --server-name openarch.local
@@ -59,9 +68,22 @@ The admin password is generated unless it is read from stdin with
 			if err != nil {
 				return err
 			}
+			wizard := f.from == "" && app.Interactive()
+			var typed string
+			if wizard {
+				if typed, err = runWizard(cmd.Context(), cmd.Flags(), f, app.Streams.In, app.Streams.Err); err != nil {
+					return err
+				}
+			}
 			opts, err := f.options(cmd.Flags(), dir, app.Streams.In)
 			if err != nil {
 				return err
+			}
+			if typed != "" {
+				opts.AdminPassword = typed
+			}
+			if wizard {
+				_, _ = fmt.Fprintf(app.Streams.Err, "Equivalent command:\n  %s\n\n", equivalentCommand(app.Opts.Dir, f, typed != ""))
 			}
 			res, err := generate.Init(cmd.Context(), app.generateEnv(), opts)
 			if err != nil {
