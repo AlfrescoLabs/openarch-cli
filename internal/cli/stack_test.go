@@ -108,3 +108,13 @@ func TestStackCommandsNeedWorkspace(t *testing.T) {
 		t.Errorf("code = %d, stderr = %q", code, errw.String())
 	}
 }
+
+func TestCleanNeedsYes(t *testing.T) {
+	code, _, stderr := runStack(t, "", nil, "clean")
+	if code != int(output.ExitUsage) || !strings.Contains(stderr, "needs --yes") {
+		t.Errorf("code = %d, stderr = %q", code, stderr)
+	}
+	if code, stdout, _ := runStack(t, "", nil, "clean", "--yes"); code != 0 || !strings.Contains(stdout, "Removed the containers and volumes") {
+		t.Errorf("code = %d, stdout = %q", code, stdout)
+	}
+}

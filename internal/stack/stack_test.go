@@ -302,3 +302,17 @@ func TestLoadNeedsSecrets(t *testing.T) {
 		t.Errorf("Load = %v", err)
 	}
 }
+
+func TestClean(t *testing.T) {
+	f := &fakeCompose{}
+	res, err := Clean(context.Background(), env(f, true), newWorkspace(t, workspace.Default("ws")), &strings.Builder{})
+	if err != nil || res.DataFolder != "" || !slices.Contains(f.calls[0], "--volumes") {
+		t.Errorf("Clean = %+v, %v, %v", res, err, f.calls)
+	}
+	cfg := workspace.Default("ws")
+	cfg.Storage = workspace.Storage{Mode: workspace.StorageBind, DataDir: "./data"}
+	w := newWorkspace(t, cfg)
+	if res, _ := Clean(context.Background(), env(&fakeCompose{}, true), w, &strings.Builder{}); res.DataFolder != filepath.Join(w.Dir, "data") {
+		t.Errorf("bind data folder = %q", res.DataFolder)
+	}
+}

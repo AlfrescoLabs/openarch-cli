@@ -161,6 +161,61 @@ With storage none there is no data to keep, so its volumes are removed too.`,
 	return cmd
 }
 
+func newCleanCmd(app *App) *cobra.Command {
+	var yes, dry bool
+	cmd := &cobra.Command{
+		Use:   "clean",
+		Short: "Stop OpenArch and delete its data",
+		Long: `Stop the stack and delete its containers, network and volumes: all the data
+in MongoDB, OpenSearch and the OpenArch files. The workspace files stay, so
+'openarch up' starts again with an empty OpenArch.
+
+With storage bind, the data folders are not deleted.
+Make a backup first with 'openarch backup'. Without a terminal, --yes is required.`,
+		Example: `  openarch clean
+  openarch clean --dir my-openarch --yes`,
+		Args: noArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			w, err := app.loadWorkspace()
+			if err != nil {
+				return err
+			}
+			if dry {
+				return app.Printer.Print(dryRun{DryRun: true, Command: composeCommand(w, "down", "--volumes")})
+			}
+			if err := app.confirm(yes, fmt.Sprintf("Delete all the data of the workspace %s?", w.Dir)); err != nil {
+				return err
+			}
+			res, err := stack.Clean(cmd.Context(), app.stackEnv(), w, app.progress())
+			if err != nil {
+				return err
+			}
+			return app.Printer.Print(res)
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "do not ask for confirmation")
+	cmd.Flags().BoolVar(&dry, "dry-run", false, "print the docker compose command, and run nothing")
+	return cmd
+}
+
+// confirm asks a yes/no question in a terminal. Without one, yes must be set.
+func (a *App) confirm(yes bool, question string) error {
+	if yes {
+		return nil
+	}
+	if !a.Interactive() {
+		return output.Usage("this command needs --yes when there is no terminal", "")
+	}
+	answer, err := readPromptLine(a.Streams.In, a.Streams.Err, question+" [y/N] ")
+	if err != nil {
+		return err
+	}
+	if v := strings.ToLower(answer); v != "y" && v != "yes" {
+		return output.NewError(output.ExitError, "cancelled", "")
+	}
+	return nil
+}
+
 func newLogsCmd(app *App) *cobra.Command {
 	var opts stack.LogsOptions
 	cmd := &cobra.Command{

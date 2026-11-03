@@ -145,7 +145,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 	pf.BoolVar(&app.Opts.NoColor, "no-color", false, "disable colors (env NO_COLOR)")
 
 	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
-		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newAPICmd(app), newConfigCmd(app),
+		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newCleanCmd(app), newAPICmd(app), newConfigCmd(app),
 		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newVersionCmd(app))
 	return root
 }

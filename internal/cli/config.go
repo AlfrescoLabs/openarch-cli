@@ -446,17 +446,8 @@ Without a terminal, --yes is required.`,
 			if err != nil {
 				return err
 			}
-			if !yes {
-				if !app.Interactive() {
-					return output.Usage("delete needs --yes when there is no terminal", "")
-				}
-				answer, err := readPromptLine(app.Streams.In, app.Streams.Err, fmt.Sprintf("Delete context %q and its stored passwords? [y/N] ", name))
-				if err != nil {
-					return err
-				}
-				if a := strings.ToLower(answer); a != "y" && a != "yes" {
-					return output.NewError(output.ExitError, "delete cancelled", "")
-				}
+			if err := app.confirm(yes, fmt.Sprintf("Delete context %q and its stored passwords?", name)); err != nil {
+				return err
 			}
 			if len(ctx.Endpoints) > 0 {
 				st, err := app.store()

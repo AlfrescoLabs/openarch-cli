@@ -444,17 +444,8 @@ func newUsersDeleteCmd(app *App) *cobra.Command {
 			if f.Users[i].ID == users.AdminID {
 				return output.Usage("the workspace admin cannot be deleted", "Change its password with 'openarch users set-password'.")
 			}
-			if !yes {
-				if !app.Interactive() {
-					return output.Usage("delete needs --yes when there is no terminal", "")
-				}
-				answer, err := readPromptLine(app.Streams.In, app.Streams.Err, fmt.Sprintf("Delete user %q? [y/N] ", name))
-				if err != nil {
-					return err
-				}
-				if a := strings.ToLower(answer); a != "y" && a != "yes" {
-					return output.NewError(output.ExitError, "delete cancelled", "")
-				}
+			if err := app.confirm(yes, fmt.Sprintf("Delete user %q?", name)); err != nil {
+				return err
 			}
 			f.Users = slices.Delete(f.Users, i, i+1)
 			if err := users.Save(dir, f); err != nil {

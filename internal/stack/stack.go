@@ -254,6 +254,36 @@ func (d DownResult) WriteText(out io.Writer) error {
 	return err
 }
 
+// CleanResult is the outcome of Clean.
+type CleanResult struct {
+	Workspace string `json:"workspace"`
+	// DataFolder is set with storage bind: Clean does not delete it.
+	DataFolder string `json:"dataFolder,omitempty"`
+}
+
+// Clean stops the stack and deletes its containers, network and volumes.
+// The data folders of storage bind are not deleted.
+func Clean(ctx context.Context, env Env, w Workspace, progress io.Writer) (CleanResult, error) {
+	if err := w.runner(env).Run(ctx, progress, progress, "down", "--volumes", "--remove-orphans"); err != nil {
+		return CleanResult{}, fmt.Errorf("docker compose down failed: %w", err)
+	}
+	res := CleanResult{Workspace: w.Dir}
+	if w.Config.Storage.Mode == workspace.StorageBind {
+		res.DataFolder = resolve(w.Dir, w.Config.Storage.DataDir)
+	}
+	return res, nil
+}
+
+// WriteText writes the human-readable form.
+func (c CleanResult) WriteText(out io.Writer) error {
+	msg := "Removed the containers and volumes. 'openarch up' starts again with no data.\n"
+	if c.DataFolder != "" {
+		msg = "Removed the containers and volumes. The data folder " + c.DataFolder + " is kept: delete it by hand to remove the data.\n"
+	}
+	_, err := io.WriteString(out, msg)
+	return err
+}
+
 // LogsOptions are the inputs of Logs.
 type LogsOptions struct {
 	Services []string
