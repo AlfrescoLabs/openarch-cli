@@ -220,6 +220,8 @@ services:
       discovery.type: single-node
       cluster.routing.allocation.disk.threshold_enabled: "false"
       bootstrap.memory_lock: "true"
+      # 'openarch backup' writes snapshots here, inside the container, then copies them out.
+      path.repo: /usr/share/opensearch/snapshots
 {{- if not .Secure }}
       # The security plugin is off. Keep port 9200 private.
       DISABLE_SECURITY_PLUGIN: "true"

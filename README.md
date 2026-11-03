@@ -30,9 +30,12 @@ Work in progress. These commands work today:
 | `openarch documents` | Gets and creates documents |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
+| `openarch upgrade` | Changes the OpenArch version, then checks the result |
+| `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
+| `openarch clean` | Stops the stack and deletes its data |
 | `openarch version` | Prints the version |
 
-Next: backups, restores, upgrades and password rotation.
+Next: password rotation.
 
 ## Requirements
 
@@ -231,6 +234,31 @@ openarch smoke-test --context prod --output json
 
 Exit code 0 means every step passed. Exit code 4 means a step failed, and 6 means the credentials were
 rejected. `--index-timeout` (default 60s) sets how long to wait for the search index.
+
+## Upgrades, backups and clean
+
+```
+openarch upgrade --version 1.0.93 --dry-run     # show the plan
+openarch upgrade --version 1.0.93               # pull, render, start, smoke test
+openarch backup                                 # into backups/<time> in the workspace
+openarch restore backups/20261103T120415Z       # replaces all the data
+openarch clean                                  # deletes all the data
+```
+
+- `upgrade` pulls the new image first, so a version that does not exist changes nothing. Then it writes
+  the version into `openarch.yaml`, starts the stack, waits until it is healthy, and runs the smoke
+  test. There is no automatic rollback: make a backup first.
+- `backup` writes `mongodb.archive.gz` (a `mongodump`), `files.tar.gz` (the OpenArch files),
+  `opensearch.tar.gz` (an OpenSearch snapshot of the OpenArch indices) and `manifest.json` (the
+  version, and a SHA-256 for each file). The backup folder and its files are private (mode 0700 and
+  0600), and `backups/` is git-ignored. The backup runs while OpenArch runs: changes made during the
+  backup may be missing from it.
+- `restore` checks every file of the backup first. Then it stops OpenArch, restores the three parts,
+  starts the stack and waits until it is healthy. It works on a running stack and after `clean`.
+- `clean` deletes the containers and volumes. With `--storage bind`, the data folders are kept.
+- `restore` and `clean` ask for confirmation, and need `--yes` without a terminal.
+- The passwords of MongoDB and OpenSearch never leave the containers: the backup commands read them
+  from the container secrets.
 
 ## Users
 

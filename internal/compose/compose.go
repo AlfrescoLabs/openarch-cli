@@ -21,6 +21,7 @@ type Exec func(ctx context.Context, cmd Command) error
 type Command struct {
 	Args   []string
 	Env    []string // added to the environment of the CLI
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 }
@@ -37,7 +38,7 @@ type Runner struct {
 func SystemExec(ctx context.Context, c Command) error {
 	cmd := exec.CommandContext(ctx, "docker", c.Args...)
 	cmd.Env = append(os.Environ(), c.Env...)
-	cmd.Stdout, cmd.Stderr = c.Stdout, c.Stderr
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = c.Stdin, c.Stdout, c.Stderr
 	return cmd.Run()
 }
 
@@ -55,6 +56,11 @@ func (r Runner) baseArgs() []string {
 // Run runs 'docker compose <args>' and writes its output to stdout and stderr.
 func (r Runner) Run(ctx context.Context, stdout, stderr io.Writer, args ...string) error {
 	return r.Exec(ctx, Command{Args: append(r.baseArgs(), args...), Env: r.Env, Stdout: stdout, Stderr: stderr})
+}
+
+// RunIO runs 'docker compose <args>' with stdin.
+func (r Runner) RunIO(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, args ...string) error {
+	return r.Exec(ctx, Command{Args: append(r.baseArgs(), args...), Env: r.Env, Stdin: stdin, Stdout: stdout, Stderr: stderr})
 }
 
 // Output runs 'docker compose <args>' and returns its stdout. stderr is in the error.
