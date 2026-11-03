@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
@@ -41,14 +42,25 @@ const (
 	SelfSignedKey  = "certs/key.pem"
 )
 
-// Input is everything the templates need.
+// Input is everything the templates need. Hashes are bcrypt hashes; the
+// templates never see a password.
 type Input struct {
-	Config    workspace.Config
-	Sizing    workspace.Sizing
-	AdminUser string
-	// AdminHash is the admin password in the users file format ({bcrypt}...).
-	AdminHash string
+	Config           workspace.Config
+	Sizing           workspace.Sizing
+	AdminUser        string
+	AdminHash        string
+	OpenSearchHashes OpenSearchHashes
 }
+
+// OpenSearchHashes are the hashes of the OpenSearch internal users.
+type OpenSearchHashes struct {
+	Admin      string
+	App        string
+	Dashboards string
+}
+
+// OpenSearchUsersFile is the workspace path of the OpenSearch internal users file.
+const OpenSearchUsersFile = "config/opensearch/internal_users.yml"
 
 // File is a rendered file. Path is relative to the workspace and uses '/'.
 type File struct {
@@ -61,12 +73,21 @@ type data struct {
 	Input
 	Images           Images
 	Volume, Bind     bool
+	Secure           bool
 	DataDir          string
 	CertFile         string
 	KeyFile          string
 	HostIP           string
 	GitignoreDataDir string
 }
+
+// Fixed user and database names, shared with .env.local.
+func (data) MongoRootUser() string       { return localenv.MongoRootUser }
+func (data) MongoAppUser() string        { return localenv.MongoAppUser }
+func (data) MongoAppDB() string          { return localenv.MongoAppDB }
+func (data) OpenSearchAdminUser() string { return localenv.OpenSearchAdminUser }
+func (data) OpenSearchAppUser() string   { return localenv.OpenSearchAppUser }
+func (data) DashboardsUser() string      { return localenv.DashboardsUser }
 
 var funcs = template.FuncMap{
 	// quote returns s as a YAML double-quoted string. JSON strings are valid YAML.
@@ -97,8 +118,8 @@ var tmpl = template.Must(template.New("").Funcs(funcs).Option("missingkey=error"
 // Render returns the generated files of a workspace, in a stable order.
 // It does not include openarch.yaml, .env.local or certificates.
 func Render(in Input) ([]File, error) {
-	if in.AdminUser == "" || in.AdminHash == "" {
-		return nil, fmt.Errorf("render: admin user and password hash are required")
+	if in.AdminUser == "" {
+		return nil, fmt.Errorf("render: the admin user is required")
 	}
 	c := in.Config
 	d := data{
@@ -107,6 +128,7 @@ func Render(in Input) ([]File, error) {
 		Volume: c.Storage.Mode == workspace.StorageVolume,
 		Bind:   c.Storage.Mode == workspace.StorageBind,
 		HostIP: hostIP(c),
+		Secure: !c.InsecureBackends,
 	}
 	if d.Bind {
 		d.DataDir = filepath.ToSlash(c.Storage.DataDir)
@@ -122,12 +144,26 @@ func Render(in Input) ([]File, error) {
 	out := []File{
 		{Path: "compose.yaml", Mode: 0o644},
 		{Path: ".env", Mode: 0o644},
-		{Path: "config/users.yml", Mode: 0o644},
 		{Path: ".gitignore", Mode: 0o644},
 		{Path: "README.md", Mode: 0o644},
 	}
+	if !c.DefaultUsers {
+		if in.AdminHash == "" {
+			return nil, fmt.Errorf("render: the admin password hash is required")
+		}
+		out = append(out, File{Path: "config/users.yml", Mode: 0o644})
+	}
 	if c.TLSEnabled() {
 		out = append(out, File{Path: "config/Caddyfile", Mode: 0o644})
+	}
+	if d.Secure {
+		h := in.OpenSearchHashes
+		if h.Admin == "" || h.App == "" || h.Dashboards == "" {
+			return nil, fmt.Errorf("render: OpenSearch password hashes are required")
+		}
+		for _, name := range []string{"opensearch.yml", "internal_users.yml", "roles.yml", "roles_mapping.yml"} {
+			out = append(out, File{Path: "config/opensearch/" + name, Mode: 0o644})
+		}
 	}
 	for i := range out {
 		var b bytes.Buffer

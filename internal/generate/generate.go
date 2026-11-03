@@ -26,8 +26,8 @@ import (
 // DefaultAdminUser is the OpenArch admin user name.
 const DefaultAdminUser = "admin"
 
-// PasswordLength is the length of generated passwords.
-const PasswordLength = 24
+// UpstreamAdminPassword is the password of the users bundled in the OpenArch image.
+const UpstreamAdminPassword = "password"
 
 // File actions.
 const (
@@ -105,17 +105,13 @@ func Init(ctx context.Context, env Env, opts InitOptions) (Result, error) {
 			}
 		}
 	}
-	secrets := localenv.Env{AdminUser: DefaultAdminUser, AdminPassword: opts.AdminPassword}
-	if secrets.AdminPassword == "" {
-		old, err := readLocalEnv(opts.Dir)
-		if err == nil && old.AdminPassword != "" {
-			secrets = old
-		} else {
-			secrets.AdminPassword = localenv.Password(PasswordLength)
-		}
+	// With --force, keep the secrets of the existing workspace.
+	secrets, err := readLocalEnv(opts.Dir)
+	if err != nil {
+		secrets = localenv.Env{}
 	}
-	if secrets.AdminUser == "" {
-		secrets.AdminUser = DefaultAdminUser
+	if opts.AdminPassword != "" {
+		secrets.AdminPassword = opts.AdminPassword
 	}
 	r := Result{Command: "init"}
 	return r, run(ctx, env, opts.Dir, cfg, secrets, opts.DryRun, false, &r)
@@ -135,15 +131,16 @@ func Render(ctx context.Context, env Env, opts RenderOptions) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if secrets.AdminUser == "" || secrets.AdminPassword == "" {
-		return Result{}, output.Usage(localenv.File+" has no admin user or password",
-			"Set "+localenv.AdminUserKey+" and "+localenv.AdminPasswordKey+" in "+localenv.File+".")
-	}
 	r := Result{Command: "render"}
-	return r, run(ctx, env, opts.Dir, cfg, secrets, opts.DryRun, true, &r)
+	return r, run(ctx, env, opts.Dir, cfg, secrets, opts.DryRun, opts.DryRun, &r)
 }
 
 func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets localenv.Env, dryRun, showDiff bool, r *Result) error {
+	// Missing secrets are generated, so render also completes an older .env.local.
+	secrets.Fill(DefaultAdminUser)
+	if cfg.DefaultUsers {
+		secrets.AdminUser, secrets.AdminPassword = DefaultAdminUser, UpstreamAdminPassword
+	}
 	r.Workspace, r.DryRun, r.Config = dir, dryRun, cfg
 	r.URL, r.AdminUser, r.PasswordFile = cfg.URL(), secrets.AdminUser, localenv.File
 	r.Warnings = cfg.Warnings()
@@ -161,13 +158,29 @@ func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets
 	}
 	r.Sizing = workspace.SizingFor(budget)
 
-	hash := existingHash(dir, secrets)
-	if hash == "" {
-		if hash, err = localenv.Hash(secrets.AdminPassword); err != nil {
+	in := templates.Input{Config: cfg, Sizing: r.Sizing, AdminUser: secrets.AdminUser}
+	// Hashes that still match their password are kept, so that render does not
+	// change files without a reason.
+	adminHashes := existingHashes(dir, usersFile, openArchHashes)
+	osHashes := existingHashes(dir, templates.OpenSearchUsersFile, openSearchHashes)
+	for _, h := range []struct {
+		dst      *string
+		existing map[string]string
+		user     string
+		password string
+	}{
+		{&in.AdminHash, adminHashes, secrets.AdminUser, secrets.AdminPassword},
+		{&in.OpenSearchHashes.Admin, osHashes, localenv.OpenSearchAdminUser, secrets.OpenSearchAdminPassword},
+		{&in.OpenSearchHashes.App, osHashes, localenv.OpenSearchAppUser, secrets.OpenSearchAppPassword},
+		{&in.OpenSearchHashes.Dashboards, osHashes, localenv.DashboardsUser, secrets.DashboardsPassword},
+	} {
+		if old, ok := h.existing[h.user]; ok && localenv.Matches(old, h.password) {
+			*h.dst = old
+		} else if *h.dst, err = localenv.Hash(h.password); err != nil {
 			return err
 		}
 	}
-	rendered, err := templates.Render(templates.Input{Config: cfg, Sizing: r.Sizing, AdminUser: secrets.AdminUser, AdminHash: hash})
+	rendered, err := templates.Render(in)
 	if err != nil {
 		return err
 	}
@@ -183,9 +196,16 @@ func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets
 	planned = append(planned, tlsFiles...)
 	r.Warnings = append(r.Warnings, warn...)
 
+	// Files from an earlier render that the current options no longer use.
 	var deletes []string
-	if !cfg.TLSEnabled() && exists(filepath.Join(dir, "config", "Caddyfile")) {
-		deletes = append(deletes, "config/Caddyfile")
+	keep := map[string]bool{}
+	for _, f := range planned {
+		keep[f.Path] = true
+	}
+	for _, p := range ownedFiles {
+		if !keep[p] && exists(filepath.Join(dir, filepath.FromSlash(p))) {
+			deletes = append(deletes, p)
+		}
 	}
 
 	for _, f := range planned {
@@ -276,13 +296,29 @@ func planTLS(dir string, cfg workspace.Config, now time.Time) ([]plannedFile, []
 	return nil, nil, nil
 }
 
-// existingHash returns the admin hash in config/users.yml if it still matches
-// the password, so that render does not change the file without a reason.
-func existingHash(dir string, secrets localenv.Env) string {
-	data, err := os.ReadFile(filepath.Join(dir, "config", "users.yml"))
+const usersFile = "config/users.yml"
+
+// ownedFiles are rendered only for some options. Render deletes them when they are no longer used.
+var ownedFiles = []string{
+	usersFile,
+	"config/Caddyfile",
+	"config/opensearch/opensearch.yml",
+	templates.OpenSearchUsersFile,
+	"config/opensearch/roles.yml",
+	"config/opensearch/roles_mapping.yml",
+}
+
+// existingHashes reads the bcrypt hashes per user from a workspace file. It returns nil if the file cannot be read.
+func existingHashes(dir, path string, parse func([]byte) map[string]string) map[string]string {
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
 	if err != nil {
-		return ""
+		return nil
 	}
+	return parse(data)
+}
+
+// openArchHashes parses config/users.yml.
+func openArchHashes(data []byte) map[string]string {
 	var f struct {
 		Users []struct {
 			Username string `yaml:"username"`
@@ -290,14 +326,32 @@ func existingHash(dir string, secrets localenv.Env) string {
 		} `yaml:"users"`
 	}
 	if yaml.Unmarshal(data, &f) != nil {
-		return ""
+		return nil
 	}
+	m := map[string]string{}
 	for _, u := range f.Users {
-		if u.Username == secrets.AdminUser && localenv.Matches(u.Password, secrets.AdminPassword) {
-			return u.Password
+		if h, ok := strings.CutPrefix(u.Password, "{bcrypt}"); ok {
+			m[u.Username] = h
 		}
 	}
-	return ""
+	return m
+}
+
+// openSearchHashes parses the OpenSearch internal_users.yml.
+func openSearchHashes(data []byte) map[string]string {
+	var f map[string]struct {
+		Hash string `yaml:"hash"`
+	}
+	if yaml.Unmarshal(data, &f) != nil {
+		return nil
+	}
+	m := map[string]string{}
+	for user, v := range f {
+		if v.Hash != "" {
+			m[user] = v.Hash
+		}
+	}
+	return m
 }
 
 func compare(dir string, f plannedFile, showDiff bool) (FileResult, error) {
@@ -391,7 +445,7 @@ func (r Result) WriteText(w io.Writer) error {
 	fmt.Fprintf(&b, "\nOpenArch URL: %s\n", r.URL)
 	fmt.Fprintf(&b, "Admin user:   %s (password in %s)\n", r.AdminUser, r.PasswordFile)
 	if !r.DryRun {
-		fmt.Fprintf(&b, "\nStart it with: cd %s && docker compose up -d\n", r.Workspace)
+		fmt.Fprintf(&b, "\nStart it with: cd %s && docker compose --env-file .env --env-file .env.local up -d\n", r.Workspace)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err

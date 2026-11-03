@@ -108,7 +108,12 @@ func TestWarnings(t *testing.T) {
 	c.BindIP = "0.0.0.0"
 	c.Expose = []string{ExposeOpenSearch}
 	w := strings.Join(c.Warnings(), "\n")
-	if !strings.Contains(w, "without TLS") || !strings.Contains(w, "security plugin") {
+	if !strings.Contains(w, "without TLS") || !strings.Contains(w, "plain HTTP") || strings.Contains(w, "no authentication") {
+		t.Errorf("Warnings = %q", w)
+	}
+	c.InsecureBackends = true
+	w = strings.Join(c.Warnings(), "\n")
+	if !strings.Contains(w, "9200 with no authentication") {
 		t.Errorf("Warnings = %q", w)
 	}
 	c.TLS.Mode = TLSSelfSigned

@@ -12,6 +12,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/certs"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
+	"github.com/AlfrescoLabs/openarch-cli/internal/templates"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
@@ -71,12 +72,24 @@ func TestInitCreatesWorkspace(t *testing.T) {
 		t.Errorf(".env.local mode = %v", info.Mode().Perm())
 	}
 	s := readSecrets(t, dir)
-	if s.AdminUser != "admin" || len(s.AdminPassword) != PasswordLength {
+	if s.AdminUser != "admin" || len(s.AdminPassword) != localenv.PasswordLength || s.OpenSearchAppPassword == "" || s.MongoRootPassword == "" {
 		t.Errorf("secrets = %+v", s)
 	}
 	users, _ := os.ReadFile(filepath.Join(dir, "config", "users.yml"))
-	if strings.Contains(string(users), s.AdminPassword) || !strings.Contains(string(users), "{bcrypt}") {
+	if strings.Contains(string(users), s.AdminPassword) || !strings.Contains(string(users), "{bcrypt}$2a$") {
 		t.Error("users.yml must hold a hash, not the password")
+	}
+	osUsers, _ := os.ReadFile(filepath.Join(dir, "config", "opensearch", "internal_users.yml"))
+	for _, pw := range []string{s.OpenSearchAdminPassword, s.OpenSearchAppPassword, s.DashboardsPassword} {
+		if strings.Contains(string(osUsers), pw) {
+			t.Error("internal_users.yml must hold hashes, not passwords")
+		}
+	}
+	compose, _ := os.ReadFile(filepath.Join(dir, "compose.yaml"))
+	for _, pw := range []string{s.MongoRootPassword, s.MongoAppPassword, s.OpenSearchAppPassword} {
+		if strings.Contains(string(compose), pw) {
+			t.Error("compose.yaml holds a password")
+		}
 	}
 	if res.Sizing.OpenArchHeap != "2g" {
 		t.Errorf("sizing = %+v, want the 8g budget", res.Sizing)
@@ -103,7 +116,7 @@ func TestInitForceKeepsPassword(t *testing.T) {
 		t.Errorf("password = %q", s.AdminPassword)
 	}
 	a := actions(res)
-	if a["openarch.yaml"] != Update || a["config/users.yml"] != Unchanged || a[localenv.File] != Unchanged {
+	if a["openarch.yaml"] != Update || a["config/users.yml"] != Unchanged || a[templates.OpenSearchUsersFile] != Unchanged || a[localenv.File] != Unchanged {
 		t.Errorf("actions = %v", a)
 	}
 }
@@ -211,6 +224,49 @@ func TestRenderNewPassword(t *testing.T) {
 		if strings.Contains(f.Diff, "new-password") {
 			t.Errorf("%s diff shows the password", f.Path)
 		}
+	}
+}
+
+func TestRenderCompletesOldSecrets(t *testing.T) {
+	dir, _ := initWorkspace(t, workspace.Default("ws"), "admin-password")
+	old := localenv.Env{AdminUser: "admin", AdminPassword: "admin-password"}
+	if err := os.WriteFile(filepath.Join(dir, localenv.File), []byte("OPENARCH_ADMIN_USER=admin\nOPENARCH_ADMIN_PASSWORD=admin-password\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Render(context.Background(), fakeEnv(8<<30), RenderOptions{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := readSecrets(t, dir)
+	if s.AdminPassword != old.AdminPassword || s.MongoAppPassword == "" || actions(res)[localenv.File] != Update {
+		t.Errorf("secrets = %+v, actions = %v", s, actions(res))
+	}
+}
+
+func TestSecurityOff(t *testing.T) {
+	cfg := workspace.Default("ws")
+	dir, _ := initWorkspace(t, cfg, "")
+
+	cfg.InsecureBackends, cfg.DefaultUsers = true, true
+	if err := os.WriteFile(filepath.Join(dir, workspace.ConfigFile), cfg.Marshal(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Render(context.Background(), fakeEnv(8<<30), RenderOptions{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := actions(res)
+	for _, p := range []string{"config/users.yml", templates.OpenSearchUsersFile, "config/opensearch/opensearch.yml"} {
+		if a[p] != Delete {
+			t.Errorf("%s: action %q, want delete", p, a[p])
+		}
+	}
+	if s := readSecrets(t, dir); s.AdminPassword != UpstreamAdminPassword {
+		t.Errorf("admin password = %q, want the bundled one", s.AdminPassword)
+	}
+	w := strings.Join(res.Warnings, " ")
+	if !strings.Contains(w, "no authentication") || !strings.Contains(w, "bundled in its image") {
+		t.Errorf("warnings = %v", res.Warnings)
 	}
 }
 

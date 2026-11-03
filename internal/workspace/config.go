@@ -70,6 +70,10 @@ type Config struct {
 	Expose        []string `yaml:"expose,omitempty" json:"expose,omitempty"`
 	With          []string `yaml:"with,omitempty" json:"with,omitempty"`
 	Memory        string   `yaml:"memory" json:"memory"`
+	// InsecureBackends turns off authentication in MongoDB and the OpenSearch security plugin.
+	InsecureBackends bool `yaml:"insecureBackends,omitempty" json:"insecureBackends,omitempty"`
+	// DefaultUsers keeps the users bundled in the OpenArch image (password "password").
+	DefaultUsers bool `yaml:"defaultUsers,omitempty" json:"defaultUsers,omitempty"`
 }
 
 // Storage selects where data is kept.
@@ -269,14 +273,23 @@ func (c Config) Warnings() []string {
 	if ip := net.ParseIP(c.BindIP); ip != nil && !ip.IsLoopback() && !c.TLSEnabled() {
 		w = append(w, "OpenArch listens on "+c.BindIP+" without TLS. Passwords are sent in clear text (HTTP Basic auth). Use --tls self-signed or --tls custom.")
 	}
-	if c.Has(ExposeOpenSearch) {
-		w = append(w, "OpenSearch is published on port 9200 with its security plugin turned off. Anyone who can reach the port can read and change the index.")
+	if c.DefaultUsers {
+		w = append(w, "OpenArch uses the users bundled in its image (admin, testuser and others), all with the password \"password\".")
 	}
-	if c.Has(ExposeMongoDB) {
-		w = append(w, "MongoDB is published on port 27017 with no authentication.")
+	if c.InsecureBackends {
+		w = append(w, "MongoDB and OpenSearch run with no authentication. Any container on the Docker network can read and change the data.")
+		if c.Has(ExposeOpenSearch) {
+			w = append(w, "OpenSearch is published on port 9200 with no authentication. Anyone who can reach the port can read and change the index.")
+		}
+		if c.Has(ExposeMongoDB) {
+			w = append(w, "MongoDB is published on port 27017 with no authentication.")
+		}
+		if c.Has(WithDashboards) {
+			w = append(w, "OpenSearch Dashboards is published on port 5601 with no authentication.")
+		}
 	}
-	if c.Has(WithDashboards) {
-		w = append(w, "OpenSearch Dashboards is published on port 5601 with no authentication.")
+	if !c.InsecureBackends && c.Has(ExposeOpenSearch) {
+		w = append(w, "OpenSearch is published on port 9200 over plain HTTP. Its passwords are sent in clear text on that port.")
 	}
 	if c.Storage.Mode == StorageNone {
 		w = append(w, "Storage none keeps no data: everything is lost when the containers are removed.")

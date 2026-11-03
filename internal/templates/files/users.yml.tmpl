@@ -13,7 +13,7 @@ groups:
 users:
   - id: "00000000-0000-0000-0000-000000000001"
     username: {{ quote .AdminUser }}
-    password: {{ quote .AdminHash }}
+    password: {{ quote (print "{bcrypt}" .AdminHash) }}
     firstName: Admin
     lastName: User
     email: admin@example.com

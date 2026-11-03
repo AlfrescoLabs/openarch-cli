@@ -51,7 +51,15 @@ stderr 'invalid storage: "disk"'
 stderr 'custom needs a certificate and a key'
 ! exec openarch init --dir bad --data-dir ./x
 stderr 'only valid with storage bind'
+stdin password.txt
+! exec openarch init --dir bad --default-users --admin-password-stdin
+stderr 'cannot be used with --default-users'
 ! exists bad
+
+# Secrets stay out of every file except .env.local
+grep 'MONGODB_ROOT_PASSWORD=' ws/.env.local
+grep 'OPENSEARCH_APP_PASSWORD=' ws/.env.local
+grep 'environment: MONGODB_ROOT_PASSWORD' ws/compose.yaml
 
 # doctor in a workspace checks the workspace ports
 ! exec openarch doctor --dir ws --check nope

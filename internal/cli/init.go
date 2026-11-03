@@ -18,7 +18,7 @@ import (
 // optionFlags are the init flags that set a key of openarch.yaml. They cannot be combined with --from.
 var optionFlags = []string{
 	"version", "storage", "data-dir", "tls", "cert", "key", "server-name",
-	"port", "bind-ip", "expose", "with", "memory",
+	"port", "bind-ip", "expose", "with", "memory", "insecure-backends", "default-users",
 }
 
 type initFlags struct {
@@ -48,8 +48,15 @@ and run 'openarch render'. Every option below is also a key in openarch.yaml.
 The workspace is the folder given by --dir, then OPENARCH_WORKSPACE, then the
 current folder. It is created if needed.
 
+Security is on by default, and every part can be turned off:
+  - OpenArch: a generated admin password replaces the users bundled in the
+    image. --default-users keeps the bundled users (admin:password).
+  - MongoDB and OpenSearch: generated passwords, given to the containers as
+    Docker Compose secrets. --insecure-backends turns authentication off.
+  - HTTPS: --tls self-signed or --tls custom. The default is plain HTTP.
+
 The admin password is generated unless it is read from stdin with
---admin-password-stdin. It is stored in .env.local and never printed.
+--admin-password-stdin. All passwords are stored in .env.local and never printed.
 
 In a terminal, init asks for every option that was not given as a flag, then
 prints the equivalent non-interactive command. --non-interactive, --from or a
@@ -59,6 +66,7 @@ prompts that work with screen readers.`,
   openarch init --storage bind --data-dir /srv/openarch
   openarch init --tls self-signed --server-name openarch.local
   openarch init --expose opensearch --with dashboards --memory 8g
+  openarch init --insecure-backends --default-users     # no passwords, plain HTTP
   printf '%s' "$PASSWORD" | openarch init --admin-password-stdin --non-interactive
   openarch init --from openarch.yaml --dir copy
   openarch init --dry-run --output json`,
@@ -105,6 +113,8 @@ prompts that work with screen readers.`,
 	fl.StringSliceVar(&f.cfg.Expose, "expose", nil, "publish an extra port: "+strings.Join(workspace.ExposeOptions, ", ")+" (repeatable)")
 	fl.StringSliceVar(&f.cfg.With, "with", nil, "add a service: "+strings.Join(workspace.WithOptions, ", ")+" (repeatable)")
 	fl.StringVar(&f.cfg.Memory, "memory", def.Memory, "memory for the stack: auto (from docker info) or a size such as 4g")
+	fl.BoolVar(&f.cfg.InsecureBackends, "insecure-backends", false, "run MongoDB and OpenSearch with no authentication")
+	fl.BoolVar(&f.cfg.DefaultUsers, "default-users", false, "keep the users bundled in the OpenArch image (admin:password and others)")
 	fl.StringVar(&f.from, "from", "", "create the workspace from an existing openarch.yaml")
 	fl.BoolVar(&f.passwordStdin, "admin-password-stdin", false, "read the admin password from stdin")
 	fl.BoolVar(&f.force, "force", false, "overwrite an existing workspace (keeps the password in .env.local unless a new one is given)")
@@ -152,6 +162,10 @@ func (f *initFlags) options(fl *pflag.FlagSet, dir string, stdin io.Reader) (gen
 			}
 		}
 		opts.Config = cfg
+	}
+	if f.passwordStdin && opts.Config.DefaultUsers {
+		return opts, output.Usage("--admin-password-stdin cannot be used with --default-users",
+			"The bundled users all have the password \"password\". Remove one of the two flags.")
 	}
 	if f.passwordStdin {
 		pw, err := readPassword(stdin)

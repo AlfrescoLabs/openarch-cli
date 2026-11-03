@@ -17,7 +17,7 @@ To change the deployment, edit `openarch.yaml` and run `openarch render`.
 | OpenSearch | http://{{ .HostIP }}:9200 |
 {{- end }}
 {{- if .Config.Has "mongodb" }}
-| MongoDB | mongodb://{{ .HostIP }}:27017/?directConnection=true |
+| MongoDB | mongodb://{{ .HostIP }}:27017/?directConnection=true{{ if .Secure }}&authSource=admin{{ end }} |
 {{- end }}
 {{- if .Config.Has "debug" }}
 | Java debug (JDWP) | {{ .HostIP }}:5005 |
@@ -25,8 +25,37 @@ To change the deployment, edit `openarch.yaml` and run `openarch render`.
 
 ## Credentials
 
-The admin user and password are in `.env.local`. Keep that file private.
-`config/users.yml` holds only a bcrypt hash of the password. OpenArch reads it at startup.
+All passwords are in `.env.local` (mode 0600, git-ignored). Keep that file private.
+{{- if .Secure }}
+Docker Compose reads it as the source of its secrets. Containers get each secret as a
+file in `/run/secrets`, never as an environment variable, so `docker inspect` does not show them.
+{{- end }}
+
+| Service | User | Password in `.env.local` |
+| --- | --- | --- |
+{{- if .Config.DefaultUsers }}
+| OpenArch | `admin`, `testuser` and the other users bundled in the image | none: all use `password` |
+{{- else }}
+| OpenArch | `{{ .AdminUser }}` | `OPENARCH_ADMIN_PASSWORD` |
+{{- end }}
+{{- if .Secure }}
+| MongoDB (root) | `{{ .MongoRootUser }}` | `MONGODB_ROOT_PASSWORD` |
+| MongoDB (OpenArch, database `{{ .MongoAppDB }}`) | `{{ .MongoAppUser }}` | `MONGODB_APP_PASSWORD` |
+| OpenSearch (admin) | `{{ .OpenSearchAdminUser }}` | `OPENSEARCH_ADMIN_PASSWORD` |
+| OpenSearch (OpenArch) | `{{ .OpenSearchAppUser }}` | `OPENSEARCH_APP_PASSWORD` |
+{{- if .Config.Has "dashboards" }}
+| OpenSearch Dashboards (server) | `{{ .DashboardsUser }}` | `OPENSEARCH_DASHBOARDS_PASSWORD` |
+{{- end }}
+
+`config/users.yml` and `config/opensearch/internal_users.yml` hold only bcrypt hashes.
+After a change of the OpenArch admin password or the MongoDB OpenArch password, run
+`openarch render`, then `docker compose --env-file .env --env-file .env.local up -d --force-recreate`.
+The MongoDB root password and the OpenSearch passwords apply only when the data is created.
+OpenSearch serves plain HTTP inside the Docker network, with users and passwords required.
+{{- else }}
+
+`insecureBackends` is on: MongoDB and OpenSearch have no authentication.
+{{- end }}
 {{- if eq .Config.TLS.Mode "self-signed" }}
 
 ## TLS
@@ -54,7 +83,7 @@ Storage is `none`: no data is kept when the containers are removed.
 ## Run without the CLI
 
 ```
-docker compose up -d
+docker compose --env-file .env --env-file .env.local up -d
 docker compose ps
 docker compose logs -f openarch-app
 docker compose down

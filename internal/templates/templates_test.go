@@ -11,13 +11,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
 
 // hash is a fixed bcrypt hash, so the golden files do not change between runs.
-const hash = "{bcrypt}$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5BWX4Z3RZbQ0Lq4n3Cf8/7xQ9b7Fy"
+const hash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5BWX4Z3RZbQ0Lq4n3Cf8/7xQ9b7Fy"
+
+var hashes = OpenSearchHashes{Admin: hash, App: hash, Dashboards: hash}
 
 func goldenCases() map[string]workspace.Config {
 	base := workspace.Default("golden")
@@ -54,6 +57,18 @@ func goldenCases() map[string]workspace.Config {
 	c.ServerName = "openarch.example.com"
 	c.Expose = []string{workspace.ExposeDebug}
 	cases["tls-custom"] = c
+
+	c = base
+	c.InsecureBackends = true
+	c.Expose = []string{workspace.ExposeMongoDB, workspace.ExposeOpenSearch}
+	c.With = []string{workspace.WithDashboards}
+	cases["insecure-backends"] = c
+
+	// Every security feature off: plain HTTP, no backend passwords, bundled OpenArch users.
+	c = base
+	c.InsecureBackends = true
+	c.DefaultUsers = true
+	cases["no-security"] = c
 	return cases
 }
 
@@ -66,7 +81,7 @@ func render(t *testing.T, cfg workspace.Config) []File {
 	if budget == 0 {
 		budget = workspace.FallbackMemory
 	}
-	files, err := Render(Input{Config: cfg, Sizing: workspace.SizingFor(budget), AdminUser: "admin", AdminHash: hash})
+	files, err := Render(Input{Config: cfg, Sizing: workspace.SizingFor(budget), AdminUser: "admin", AdminHash: hash, OpenSearchHashes: hashes})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +92,11 @@ func TestGolden(t *testing.T) {
 	for name, cfg := range goldenCases() {
 		t.Run(name, func(t *testing.T) {
 			dir := filepath.Join("testdata", name)
-			for _, f := range render(t, cfg) {
+			files := render(t, cfg)
+			if !*update {
+				checkNoExtraGolden(t, dir, files)
+			}
+			for _, f := range files {
 				golden := filepath.Join(dir, goldenName(f.Path))
 				if *update {
 					if err := os.MkdirAll(filepath.Dir(golden), 0o755); err != nil {
@@ -98,6 +117,26 @@ func TestGolden(t *testing.T) {
 			}
 		})
 	}
+}
+
+// checkNoExtraGolden fails when a golden file has no rendered file, which
+// happens when a template stops producing a file.
+func checkNoExtraGolden(t *testing.T, dir string, files []File) {
+	t.Helper()
+	want := map[string]bool{}
+	for _, f := range files {
+		want[goldenName(f.Path)] = true
+	}
+	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, p)
+		if !want[rel] {
+			t.Errorf("golden file %s is not rendered any more (delete it)", p)
+		}
+		return nil
+	})
 }
 
 // goldenName maps a workspace path to its golden file. Dot files get a "dot-"
@@ -130,7 +169,12 @@ func TestComposeConfig(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, "docker", "compose", "config", "--quiet")
+			var secrets localenv.Env
+			secrets.Fill("admin")
+			if err := os.WriteFile(filepath.Join(dir, localenv.File), secrets.Marshal(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.CommandContext(ctx, "docker", "compose", "--env-file", ".env", "--env-file", localenv.File, "config", "--quiet")
 			cmd.Dir = dir
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Errorf("docker compose config: %v\n%s", err, out)
@@ -140,8 +184,11 @@ func TestComposeConfig(t *testing.T) {
 }
 
 func TestRenderNeedsAdmin(t *testing.T) {
-	if _, err := Render(Input{Config: workspace.Default("x"), Sizing: workspace.SizingFor(0)}); err == nil {
-		t.Error("Render without admin succeeded")
+	if _, err := Render(Input{Config: workspace.Default("x"), Sizing: workspace.SizingFor(0), AdminUser: "admin", OpenSearchHashes: hashes}); err == nil {
+		t.Error("Render without admin hash succeeded")
+	}
+	if _, err := Render(Input{Config: workspace.Default("x"), Sizing: workspace.SizingFor(0), AdminUser: "admin", AdminHash: hash}); err == nil {
+		t.Error("Render without OpenSearch hashes succeeded")
 	}
 }
 

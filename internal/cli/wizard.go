@@ -113,7 +113,21 @@ var questions = []question{
 		return huh.NewInput().Title("OpenArch version").Description("Image tag of ghcr.io/hyland/openarch-app-jvm.").
 			Value(&w.f.cfg.Version)
 	}},
-	{flag: "admin-password-stdin", field: func(w *wizard) huh.Field {
+	{flag: "insecure-backends", field: func(w *wizard) huh.Field {
+		return huh.NewSelect[bool]().Title("MongoDB and OpenSearch security").
+			Options(
+				huh.NewOption("on: generated passwords (recommended)", false),
+				huh.NewOption("off: no authentication", true),
+			).Value(&w.f.cfg.InsecureBackends)
+	}},
+	{flag: "default-users", field: func(w *wizard) huh.Field {
+		return huh.NewSelect[bool]().Title("OpenArch users").
+			Options(
+				huh.NewOption("admin only, with a new password (recommended)", false),
+				huh.NewOption("users bundled in the image: admin, testuser and others, password \"password\"", true),
+			).Value(&w.f.cfg.DefaultUsers)
+	}},
+	{flag: "admin-password-stdin", skip: func(w *wizard) bool { return w.f.cfg.DefaultUsers }, field: func(w *wizard) huh.Field {
 		return huh.NewInput().Title("Admin password").
 			Description("Leave empty to generate one. It is stored in .env.local.").
 			EchoMode(huh.EchoModePassword).Value(&w.password).
@@ -236,6 +250,12 @@ func equivalentCommand(dirFlag string, f *initFlags, password bool) string {
 	}
 	if c.Memory != def.Memory {
 		add("memory", c.Memory)
+	}
+	if c.InsecureBackends {
+		args = append(args, "--insecure-backends")
+	}
+	if c.DefaultUsers {
+		args = append(args, "--default-users")
 	}
 	if f.force {
 		args = append(args, "--force")
