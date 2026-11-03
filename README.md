@@ -65,6 +65,8 @@ openarch init --dir my-openarch
 openarch up --dir my-openarch
 ```
 
+For a tour of every feature in a temporary folder, see [docs/walkthrough.md](docs/walkthrough.md).
+
 `up` returns when OpenArch is healthy. OpenArch is then at http://localhost:8080, and the Swagger UI
 is at http://localhost:8080/swagger-ui/index.html. The first start pulls about 2 GB of images, so it
 takes a few minutes.
