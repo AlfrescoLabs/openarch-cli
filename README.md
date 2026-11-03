@@ -13,7 +13,7 @@ The same commands work for people and for scripts or AI agents:
 
 ## Status
 
-Work in progress. These commands work today:
+Version 0.1.0 is the first release. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -36,17 +36,54 @@ Work in progress. These commands work today:
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
 | `openarch version` | Prints the version |
 
-Next: the first release, with binaries for Linux, macOS and Windows.
-
 ## Requirements
 
 - Docker with Docker Compose v2 or later
 - About 4 GB of memory for Docker
-- Go 1.26 or later, to build the CLI
+- Go 1.26 or later, only to build the CLI from source
 
 On native Linux, OpenSearch needs `vm.max_map_count` set to at least 262144. `openarch doctor` checks this.
 
-## Build
+## Install
+
+Download the archive for your system from the
+[releases page](https://github.com/AlfrescoLabs/openarch-cli/releases): Linux, macOS and Windows, on
+amd64 or arm64. Each archive has the `openarch` binary, the license, this README and the walkthrough.
+
+```
+VERSION=0.1.0
+OS=linux        # or darwin, windows
+ARCH=amd64      # or arm64
+curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/openarch_${VERSION}_${OS}_${ARCH}.tar.gz"
+curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt"
+sha256sum --ignore-missing -c checksums.txt     # on macOS: shasum -a 256 --ignore-missing -c checksums.txt
+tar xzf "openarch_${VERSION}_${OS}_${ARCH}.tar.gz"
+sudo mv openarch /usr/local/bin/
+openarch version
+```
+
+On Windows, download the `.zip` archive and put `openarch.exe` in a folder on your `PATH`.
+
+The binaries are not signed with an Apple or Microsoft certificate. When a browser downloaded the file,
+macOS may block it: run `xattr -d com.apple.quarantine openarch` once. Windows may show a SmartScreen
+warning.
+
+### Verify the release
+
+`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/) by the release workflow of this
+repository (keyless, with the GitHub Actions identity). Each archive also has an SBOM
+(`.sbom.json`, SPDX format).
+
+```
+curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt.pem"
+curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt.sig"
+cosign verify-blob checksums.txt \
+  --certificate checksums.txt.pem --signature checksums.txt.sig \
+  --certificate-identity "https://github.com/AlfrescoLabs/openarch-cli/.github/workflows/release.yml@refs/tags/v$VERSION" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+### Build from source
 
 ```
 git clone https://github.com/AlfrescoLabs/openarch-cli.git

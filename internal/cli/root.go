@@ -107,8 +107,8 @@ func execute(ctx context.Context, app *App, args []string) int {
 func newRootCmd(app *App) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "openarch",
-		Short: "Install and operate OpenArch and Content Lake",
-		Long: `openarch installs and operates OpenArch and, optionally, Content Lake.
+		Short: "Install and operate OpenArch",
+		Long: `openarch installs and operates OpenArch with Docker Compose.
 
 Every command supports --output json. Results go to stdout and logs go to stderr.
 Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,

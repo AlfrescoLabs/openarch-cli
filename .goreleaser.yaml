@@ -12,13 +12,16 @@ builds:
     binary: openarch
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
       - -s -w
       - -X github.com/AlfrescoLabs/openarch-cli/internal/version.Version={{ .Version }}
       - -X github.com/AlfrescoLabs/openarch-cli/internal/version.Commit={{ .ShortCommit }}
-      - -X github.com/AlfrescoLabs/openarch-cli/internal/version.Date={{ .Date }}
+      - -X github.com/AlfrescoLabs/openarch-cli/internal/version.Date={{ .CommitDate }}
 
 archives:
   - formats: [tar.gz]
@@ -26,16 +29,46 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - docs/walkthrough.md
 
 checksum:
   name_template: checksums.txt
+
+# One SBOM (SPDX JSON, made by syft) per archive.
+sboms:
+  - artifacts: archive
+
+# Keyless signature of checksums.txt with cosign, from the GitHub Actions OIDC identity.
+signs:
+  - cmd: cosign
+    certificate: "${artifact}.pem"
+    signature: "${artifact}.sig"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  disable: true
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge "
 
-# Publishing stays off until a release is reviewed and approved.
+# The release is a draft: it is visible only to maintainers until someone publishes it on GitHub.
 release:
-  disable: true
+  github:
+    owner: AlfrescoLabs
+    name: openarch-cli
+  draft: true
+  prerelease: auto
+  name_template: "openarch {{ .Version }}"

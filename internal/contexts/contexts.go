@@ -24,7 +24,7 @@ const (
 	EnvContext   = "OPENARCH_CONTEXT"
 )
 
-// Systems a context can have an endpoint for. Content Lake adds more later.
+// SystemOpenArch is the endpoint system of an OpenArch server.
 const SystemOpenArch = "openarch"
 
 // Systems lists the valid endpoint systems.

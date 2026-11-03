@@ -48,7 +48,9 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - uses: anchore/sbom-action/download-syft@v0
+      # Signing needs the release workflow's OIDC token, so the snapshot skips it.
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --snapshot --clean
+          args: release --snapshot --clean --skip=sign
