@@ -31,6 +31,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Check that the generated API client is up to date
+        run: |
+          make generate
+          git diff --exit-code -- internal/api/gen
       - uses: golangci/golangci-lint-action@v8
         with:
           version: latest

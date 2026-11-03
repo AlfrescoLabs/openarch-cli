@@ -24,9 +24,10 @@ Work in progress. These commands work today:
 | `openarch status` | Shows the state of each service and of the OpenArch API |
 | `openarch logs` | Shows the logs of the services |
 | `openarch down` | Stops the stack and keeps the data |
+| `openarch api ping` | Checks that OpenArch answers and that the credentials work |
 | `openarch version` | Prints the version |
 
-Next: admin commands, a smoke test, backups and upgrades.
+Next: saved connections, admin commands, a smoke test, backups and upgrades.
 
 ## Requirements
 
@@ -167,6 +168,32 @@ With `--insecure-backends`, there are no secrets, and `docker compose up -d` is 
 After a change to a password or to a file in `config/`, add `--force-recreate` to `up`. `openarch up`
 does this for you, and only for the services that need it.
 
+## Connect to the OpenArch API
+
+Commands that call the API, such as `openarch api ping`, find the URL, user and password in this order:
+
+1. Flags: `--url`, `--user`, `--password-stdin`. `--password` works too, but it prints a warning,
+   because the password stays in the shell history.
+2. Environment variables: `OPENARCH_URL`, `OPENARCH_USER`, `OPENARCH_PASSWORD`.
+3. The workspace: the URL from `openarch.yaml` and the admin user and password from `.env.local`.
+4. A hidden prompt, when the command runs in a terminal.
+
+The first source that has a value wins, for each value. Workspace credentials are used only with the
+workspace URL, so they are never sent to another server.
+
+```
+openarch api ping                                  # inside a workspace: no flags needed
+openarch api ping --dir my-openarch --output json
+printf '%s' "$PASSWORD" | openarch api ping --url https://openarch.example.com --user admin --password-stdin
+```
+
+- With a self-signed workspace certificate, the CLI trusts the workspace certificate. It also connects
+  to the published port on this machine, so the server name does not need to resolve.
+- `--insecure` (or `OPENARCH_INSECURE=true`) turns off certificate checks, with a warning each time.
+- `--verbose` logs each request, with the `Authorization` header replaced by `REDACTED`.
+- Exit code 6 means the credentials are missing or wrong. Exit code 5 means the server cannot be reached
+  or returned an error.
+
 ## Workspace files
 
 | File | Content |
@@ -254,12 +281,15 @@ too in this mode. Logs and warnings always go to stderr.
 ```
 go test ./...
 go test ./internal/templates -update     # rewrite the golden files after a template change
+make generate                            # regenerate the API client from api/openapi.json
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 ```
 
 - End-to-end tests are `testscript` files in `testdata/script/`.
 - The templates have golden files in `internal/templates/testdata/`.
 - When Docker is installed, the tests also check each golden case with `docker compose config`.
+- The API client in `internal/api/gen` is generated with `oapi-codegen` from `api/openapi.json`, the
+  spec of a running OpenArch (`/v3/api-docs`). CI fails when the generated code is not up to date.
 
 ## License
 

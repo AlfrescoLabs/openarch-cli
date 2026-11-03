@@ -1,0 +1,8 @@
+# Generates the OpenArch REST client from api/openapi.json. Run: make generate
+package: gen
+output: internal/api/gen/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: false
