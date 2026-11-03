@@ -4,13 +4,15 @@ _meta:
   config_version: 2
 
 # OpenArch creates and manages its own indices and aliases. It cannot change
-# the security configuration. Bulk indexing is a cluster-level permission in
-# cluster_composite_ops, which cluster_all does not include.
+# the security configuration. Some document operations are cluster-level
+# permissions that cluster_all does not include: bulk indexing (in
+# cluster_composite_ops) and clearing search scrolls (indices:data/read/scroll*).
 openarch_app:
   reserved: true
   cluster_permissions:
     - "cluster_all"
     - "cluster_composite_ops"
+    - "indices:data/read/scroll*"
   index_permissions:
     - index_patterns:
         - "*"
