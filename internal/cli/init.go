@@ -117,7 +117,7 @@ prompts that work with screen readers.`,
 	fl.BoolVar(&f.cfg.DefaultUsers, "default-users", false, "keep the users bundled in the OpenArch image (admin:password and others)")
 	fl.StringVar(&f.from, "from", "", "create the workspace from an existing openarch.yaml")
 	fl.BoolVar(&f.passwordStdin, "admin-password-stdin", false, "read the admin password from stdin")
-	fl.BoolVar(&f.force, "force", false, "overwrite an existing workspace (keeps the password in .env.local unless a new one is given)")
+	fl.BoolVar(&f.force, "force", false, "overwrite an existing workspace (keeps the passwords in .env.local unless a new admin password is given)")
 	fl.BoolVar(&f.dryRun, "dry-run", false, "list the files that would be written, and write nothing")
 	return cmd
 }
