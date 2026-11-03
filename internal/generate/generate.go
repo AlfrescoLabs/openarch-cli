@@ -445,7 +445,7 @@ func (r Result) WriteText(w io.Writer) error {
 	fmt.Fprintf(&b, "\nOpenArch URL: %s\n", r.URL)
 	fmt.Fprintf(&b, "Admin user:   %s (password in %s)\n", r.AdminUser, r.PasswordFile)
 	if !r.DryRun {
-		fmt.Fprintf(&b, "\nStart it with: cd %s && docker compose --env-file .env --env-file .env.local up -d\n", r.Workspace)
+		fmt.Fprintf(&b, "\nStart it with: openarch up --dir %s\n", r.Workspace)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err

@@ -11,6 +11,9 @@ services:
   openarch-app:
     image: ghcr.io/hyland/openarch-app-jvm:${OPENARCH_VERSION:?set OPENARCH_VERSION in .env}
     restart: unless-stopped
+    # 'openarch up' sets this hash of the users file and secrets, so a change recreates the container.
+    labels:
+      openarch.config-hash: ${OPENARCH_APP_CONFIG_HASH:-}
     depends_on:
 {{- if .Bind }}
       data-init:
@@ -186,6 +189,8 @@ services:
   opensearch:
     image: {{ .Images.OpenSearch }}
     restart: unless-stopped
+    labels:
+      openarch.config-hash: ${OPENARCH_OPENSEARCH_CONFIG_HASH:-}
 {{- if .Bind }}
     depends_on:
       data-init:
@@ -284,6 +289,8 @@ services:
   opensearch-dashboards:
     image: {{ .Images.Dashboards }}
     restart: unless-stopped
+    labels:
+      openarch.config-hash: ${OPENARCH_DASHBOARDS_CONFIG_HASH:-}
     depends_on:
       opensearch:
         condition: service_healthy
@@ -314,6 +321,8 @@ services:
   proxy:
     image: {{ .Images.Caddy }}
     restart: unless-stopped
+    labels:
+      openarch.config-hash: ${OPENARCH_PROXY_CONFIG_HASH:-}
     depends_on:
       - openarch-app
     ports:

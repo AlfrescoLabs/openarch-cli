@@ -129,12 +129,12 @@ func (e Env) MongoAppURI() string {
 func (e Env) Marshal() []byte {
 	var b bytes.Buffer
 	b.WriteString(`# Secrets of this OpenArch workspace. Keep this file private (mode 0600, git-ignored).
-# Docker Compose reads it as the source of its secrets, so run it with:
-#   docker compose --env-file .env --env-file .env.local up -d
+# Docker Compose reads it as the source of its secrets: 'openarch up' passes it, and
+# plain Docker Compose needs: docker compose --env-file .env --env-file .env.local up -d
 # Containers get the values as files in /run/secrets, never as environment variables.
 #
 # After a change of the OpenArch admin password or the MongoDB app password, run
-# 'openarch render', then 'docker compose ... up -d --force-recreate'.
+# 'openarch render', then 'openarch up'.
 # The MongoDB root password and the OpenSearch passwords apply only when the data is
 # created, at the first start. Changing them later here has no effect on existing data.
 `)

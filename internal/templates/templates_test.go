@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -178,6 +179,19 @@ func TestComposeConfig(t *testing.T) {
 			cmd.Dir = dir
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Errorf("docker compose config: %v\n%s", err, out)
+			}
+			cmd = exec.CommandContext(ctx, "docker", "compose", "--env-file", ".env", "--env-file", localenv.File, "config", "--services")
+			cmd.Dir = dir
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("docker compose config --services: %v", err)
+			}
+			got := strings.Fields(string(out))
+			want := cfg.ServiceNames()
+			slices.Sort(got)
+			slices.Sort(want)
+			if !slices.Equal(got, want) {
+				t.Errorf("compose services = %v, Config.Services = %v", got, want)
 			}
 		})
 	}

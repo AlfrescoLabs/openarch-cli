@@ -15,6 +15,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
 	"github.com/AlfrescoLabs/openarch-cli/internal/generate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
+	"github.com/AlfrescoLabs/openarch-cli/internal/stack"
 	"github.com/AlfrescoLabs/openarch-cli/internal/term"
 )
 
@@ -47,10 +48,11 @@ type App struct {
 	// doctorEnv and generateEnv give commands access to the system. Tests replace them with fakes.
 	doctorEnv   func() doctor.Env
 	generateEnv func() generate.Env
+	stackEnv    func() stack.Env
 }
 
 func newApp(s Streams) *App {
-	return &App{Streams: s, doctorEnv: doctor.SystemEnv, generateEnv: generate.SystemEnv}
+	return &App{Streams: s, doctorEnv: doctor.SystemEnv, generateEnv: generate.SystemEnv, stackEnv: stack.SystemEnv}
 }
 
 // Interactive reports whether commands may prompt the user.
@@ -110,8 +112,10 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 4 service not healthy, 5 remote API error, 6 authentication failed.`,
 		Example: `  openarch doctor
   openarch init --dir my-openarch
-  openarch render --dry-run
-  openarch version --output json`,
+  openarch up --dir my-openarch
+  openarch status --output json
+  openarch logs openarch-app --tail 50
+  openarch down`,
 		Args:          noArgs,
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -137,7 +141,8 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 	pf.BoolVarP(&app.Opts.Verbose, "verbose", "v", false, "print debug logs to stderr")
 	pf.BoolVar(&app.Opts.NoColor, "no-color", false, "disable colors (env NO_COLOR)")
 
-	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app), newVersionCmd(app))
+	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
+		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newVersionCmd(app))
 	return root
 }
 

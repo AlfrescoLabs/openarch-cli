@@ -27,13 +27,22 @@ file in `/run/secrets`, never as an environment variable, so `docker inspect` do
 
 `config/users.yml` and `config/opensearch/internal_users.yml` hold only bcrypt hashes.
 After a change of the OpenArch admin password or the MongoDB OpenArch password, run
-`openarch render`, then `docker compose --env-file .env --env-file .env.local up -d --force-recreate`.
+`openarch render`, then `openarch up`.
 The MongoDB root password and the OpenSearch passwords apply only when the data is created.
 OpenSearch serves plain HTTP inside the Docker network, with users and passwords required.
 
 ## Storage
 
 Data is kept in `./data`: one folder each for MongoDB, OpenSearch and OpenArch files.
+
+## Run
+
+```
+openarch up
+openarch status
+openarch logs openarch-app -f
+openarch down
+```
 
 ## Run without the CLI
 

@@ -55,6 +55,9 @@ var DefaultPorts = []int{8080}
 type Options struct {
 	// Ports to check. Empty means DefaultPorts.
 	Ports []int
+	// OwnPorts are published by the running stack of this workspace. A busy
+	// port in this list is not a problem.
+	OwnPorts []int
 	// Only runs the checks with these IDs. Empty means all checks.
 	Only []string
 }

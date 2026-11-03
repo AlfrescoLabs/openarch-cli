@@ -20,10 +20,13 @@ Work in progress. These commands work today:
 | `openarch doctor` | Checks Docker, Docker Compose, memory, free ports and access to the image registry |
 | `openarch init` | Creates a workspace with every deployment option |
 | `openarch render` | Writes the workspace files again from `openarch.yaml` |
+| `openarch up` | Starts the stack and waits until it is healthy |
+| `openarch status` | Shows the state of each service and of the OpenArch API |
+| `openarch logs` | Shows the logs of the services |
+| `openarch down` | Stops the stack and keeps the data |
 | `openarch version` | Prints the version |
 
-Commands to start and stop the stack (`up`, `down`, `status`, `logs`) are not done yet.
-For now, start the workspace with `docker compose` (see [Start OpenArch](#start-openarch)).
+Next: admin commands, a smoke test, backups and upgrades.
 
 ## Requirements
 
@@ -49,12 +52,12 @@ Without `make`: `go build -o bin/openarch ./cmd/openarch`.
 ```
 openarch doctor
 openarch init --dir my-openarch
-cd my-openarch
-docker compose --env-file .env --env-file .env.local up -d
+openarch up --dir my-openarch
 ```
 
-OpenArch is then at http://localhost:8080. The Swagger UI is at http://localhost:8080/swagger-ui/index.html.
-The first start takes a few minutes.
+`up` returns when OpenArch is healthy. OpenArch is then at http://localhost:8080, and the Swagger UI
+is at http://localhost:8080/swagger-ui/index.html. The first start pulls about 2 GB of images, so it
+takes a few minutes.
 
 The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPENARCH_ADMIN_PASSWORD`.
 
@@ -122,14 +125,34 @@ Risky choices print a warning on stderr, for example `--bind-ip 0.0.0.0` without
 1. Edit `openarch.yaml`.
 2. Run `openarch render --dry-run` to see the diff.
 3. Run `openarch render` to write the files.
-4. Restart the stack with `docker compose`.
+4. Run `openarch up`. It recreates only the services whose files or passwords changed.
 
 `render` only touches files that change. When an option no longer needs a file (for example, the proxy
 config after you turn off TLS), `render` deletes it.
 
-## Start OpenArch
+## Run OpenArch
 
-In secure mode (the default), Docker Compose needs both env files:
+Run these in the workspace folder, or add `--dir my-openarch`:
+
+```
+openarch up                       # start, and wait until healthy
+openarch status                   # state of each service and of the API
+openarch logs openarch-app -f     # follow the OpenArch logs
+openarch down                     # stop, and keep the data
+```
+
+- `up` runs the `doctor` checks first. Ports that this workspace already uses are not reported as busy.
+  Use `--skip-doctor` to skip the checks.
+- `up` waits up to 10 minutes. Change it with `--timeout`, or use `--wait=false` to return at once.
+- `status` exits with code 0 when the stack is healthy, and 4 in any other state
+  (`starting`, `unhealthy`, `stopped`).
+- `down` keeps the named volumes and data folders. With `--storage none` there is no data to keep, so
+  its volumes are removed.
+
+### Without the CLI
+
+The workspace is a plain Docker Compose project. In secure mode (the default), Docker Compose needs
+both env files:
 
 ```
 cd my-openarch
@@ -141,7 +164,8 @@ docker compose down
 
 With `--insecure-backends`, there are no secrets, and `docker compose up -d` is enough.
 
-`docker compose down` keeps the data. `docker compose down -v` deletes the named volumes.
+After a change to a password or to a file in `config/`, add `--force-recreate` to `up`. `openarch up`
+does this for you, and only for the services that need it.
 
 ## Workspace files
 
@@ -208,8 +232,7 @@ Notes:
 - Inside the Docker network, OpenSearch uses plain HTTP, with users and passwords required.
 - The MongoDB root password and the OpenSearch passwords apply only when the data is created, at the
   first start. To change the OpenArch admin password or the MongoDB `openarch` password, edit
-  `.env.local`, run `openarch render`, then run
-  `docker compose --env-file .env --env-file .env.local up -d --force-recreate`.
+  `.env.local`, then run `openarch render` and `openarch up`.
 
 ## Output and exit codes
 

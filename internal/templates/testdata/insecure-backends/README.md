@@ -29,6 +29,15 @@ All passwords are in `.env.local` (mode 0600, git-ignored). Keep that file priva
 Data is kept in Docker named volumes: `golden_mongodb-data`, `golden_opensearch-data` and `golden_openarch-data`.
 `docker compose down` keeps them. `docker compose down -v` deletes them.
 
+## Run
+
+```
+openarch up
+openarch status
+openarch logs openarch-app -f
+openarch down
+```
+
 ## Run without the CLI
 
 ```

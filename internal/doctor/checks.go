@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -98,7 +99,7 @@ func checks(env Env, opts Options) []check {
 		ports = DefaultPorts
 	}
 	for _, p := range ports {
-		cs = append(cs, check{fmt.Sprintf("port.%d", p), fmt.Sprintf("Port %d is free", p), portCheck(p)})
+		cs = append(cs, check{fmt.Sprintf("port.%d", p), fmt.Sprintf("Port %d is free", p), portCheck(p, slices.Contains(opts.OwnPorts, p))})
 	}
 	return append(cs, check{"network.ghcr", "Access to ghcr.io", checkRegistry})
 }
@@ -194,10 +195,13 @@ func checkMaxMapCount(ctx context.Context, s *state) Result {
 	return Result{Status: OK, Message: fmt.Sprintf("vm.max_map_count is %d", n)}
 }
 
-func portCheck(port int) func(context.Context, *state) Result {
+func portCheck(port int, own bool) func(context.Context, *state) Result {
 	return func(ctx context.Context, s *state) Result {
 		if s.env.PortFree(ctx, port) {
 			return Result{Status: OK, Message: fmt.Sprintf("port %d is free", port)}
+		}
+		if own {
+			return Result{Status: OK, Message: fmt.Sprintf("port %d is used by this workspace", port)}
 		}
 		find := fmt.Sprintf("lsof -nP -iTCP:%d -sTCP:LISTEN", port)
 		if s.env.GOOS == "windows" {
