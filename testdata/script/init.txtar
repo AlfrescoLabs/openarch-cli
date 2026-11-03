@@ -1,0 +1,76 @@
+# The tests must not depend on the Docker memory of the machine.
+env OPENARCH_WORKSPACE=
+
+# Dry run lists the files and writes nothing
+exec openarch init --dir ws --dry-run --memory 4g
+stdout '^Dry run: nothing was written'
+stdout 'create    compose.yaml'
+! exists ws
+
+# Create a workspace with a password from stdin
+stdin password.txt
+exec openarch init --dir ws --admin-password-stdin --memory 4g
+stdout '^Created workspace '
+stdout 'OpenArch URL: http://localhost:8080'
+exists ws/openarch.yaml ws/compose.yaml ws/.env ws/.env.local ws/config/users.yml ws/README.md ws/.gitignore
+grep 'OPENARCH_ADMIN_PASSWORD=Secret-pass-123' ws/.env.local
+! grep 'Secret-pass-123' ws/config/users.yml
+! stdout 'Secret-pass-123'
+
+# A second init needs --force
+! exec openarch init --dir ws
+stderr 'already has openarch.yaml'
+stderr 'Hint: Use --force'
+
+# Render with no change touches nothing
+exec openarch render --dir ws
+! stdout 'update|create'
+
+# Edit openarch.yaml, then render shows a diff in dry-run mode
+cp edited.yaml ws/openarch.yaml
+exec openarch render --dir ws --dry-run
+stdout 'update    compose.yaml'
+stdout '\+      - "\$\{OPENARCH_BIND_IP:\?\}:5005:5005"'
+
+# Warnings go to stderr, never to JSON stdout
+exec openarch render --dir ws --output json
+stderr '^Warning: OpenSearch is published'
+stdout '"action": "update"'
+! stdout 'Warning'
+
+# --from copies an existing config into a new workspace
+exec openarch init --from ws/openarch.yaml --dir copy --output json
+stdout '"name": "ws"'
+! exec openarch init --from ws/openarch.yaml --dir copy2 --port 9000
+stderr '--from cannot be used with --port'
+
+# Invalid options are usage errors
+! exec openarch init --dir bad --storage disk
+stderr 'invalid storage: "disk"'
+! exec openarch init --dir bad --tls custom
+stderr 'custom needs a certificate and a key'
+! exec openarch init --dir bad --data-dir ./x
+stderr 'only valid with storage bind'
+! exists bad
+
+# doctor in a workspace checks the workspace ports
+! exec openarch doctor --dir ws --check nope
+stderr 'port.8080, port.9200, port.5005'
+
+-- password.txt --
+Secret-pass-123
+-- edited.yaml --
+schemaVersion: 1
+name: ws
+version: 1.0.90
+storage:
+  mode: volume
+tls:
+  mode: none
+serverName: localhost
+port: 8080
+bindIP: 127.0.0.1
+expose:
+  - debug
+  - opensearch
+memory: 4g

@@ -60,6 +60,11 @@ func (p *Printer) Print(v any) error {
 	return err
 }
 
+// Warn writes a warning to stderr in every format, so JSON stdout is not affected.
+func (p *Printer) Warn(msg string) {
+	_, _ = fmt.Fprintln(p.errw, "Warning:", msg)
+}
+
 type jsonError struct {
 	Error jsonErrorBody `json:"error"`
 }

@@ -1,0 +1,61 @@
+# OpenArch workspace: {{ .Config.Name }}
+
+This folder was created by `openarch init`. `openarch.yaml` is the source of truth.
+To change the deployment, edit `openarch.yaml` and run `openarch render`.
+
+## Endpoints
+
+| Service | URL |
+| --- | --- |
+| OpenArch API | {{ .Config.URL }} |
+| Swagger UI | {{ .Config.URL }}/swagger-ui/index.html |
+| Health | {{ .Config.URL }}/actuator/health |
+{{- if .Config.Has "dashboards" }}
+| OpenSearch Dashboards | http://{{ .HostIP }}:5601 |
+{{- end }}
+{{- if .Config.Has "opensearch" }}
+| OpenSearch | http://{{ .HostIP }}:9200 |
+{{- end }}
+{{- if .Config.Has "mongodb" }}
+| MongoDB | mongodb://{{ .HostIP }}:27017/?directConnection=true |
+{{- end }}
+{{- if .Config.Has "debug" }}
+| Java debug (JDWP) | {{ .HostIP }}:5005 |
+{{- end }}
+
+## Credentials
+
+The admin user and password are in `.env.local`. Keep that file private.
+`config/users.yml` holds only a bcrypt hash of the password. OpenArch reads it at startup.
+{{- if eq .Config.TLS.Mode "self-signed" }}
+
+## TLS
+
+The certificate in `certs/` is self-signed, so browsers and clients do not trust it by default.
+It is valid for {{ .Config.ServerName }}, localhost and 127.0.0.1.
+{{- else if eq .Config.TLS.Mode "custom" }}
+
+## TLS
+
+The proxy uses the certificate `{{ .Config.TLS.Cert }}` and the key `{{ .Config.TLS.Key }}`.
+{{- end }}
+
+## Storage
+
+{{ if .Volume -}}
+Data is kept in Docker named volumes: `{{ .Config.Name }}_mongodb-data`, `{{ .Config.Name }}_opensearch-data` and `{{ .Config.Name }}_openarch-data`.
+`docker compose down` keeps them. `docker compose down -v` deletes them.
+{{- else if .Bind -}}
+Data is kept in `{{ .DataDir }}`: one folder each for MongoDB, OpenSearch and OpenArch files.
+{{- else -}}
+Storage is `none`: no data is kept when the containers are removed.
+{{- end }}
+
+## Run without the CLI
+
+```
+docker compose up -d
+docker compose ps
+docker compose logs -f openarch-app
+docker compose down
+```

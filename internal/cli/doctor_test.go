@@ -33,6 +33,7 @@ func fakeDoctorEnv(portBusy bool) func() doctor.Env {
 func runDoctor(t *testing.T, portBusy bool, args ...string) (int, string, string) {
 	t.Helper()
 	t.Setenv(envOutput, "")
+	t.Setenv("OPENARCH_WORKSPACE", t.TempDir())
 	var out, errw bytes.Buffer
 	app := newApp(Streams{In: strings.NewReader(""), Out: &out, Err: &errw})
 	app.doctorEnv = fakeDoctorEnv(portBusy)
