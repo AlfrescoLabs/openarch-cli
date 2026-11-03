@@ -282,7 +282,7 @@ func TestConfigHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 	after := w.ConfigHashes()
-	if len(before) != 3 || len(after) != 3 {
+	if len(before) != 4 || len(after) != 4 {
 		t.Fatalf("hashes = %v", before)
 	}
 	for i := range before {

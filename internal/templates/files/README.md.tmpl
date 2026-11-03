@@ -50,7 +50,7 @@ file in `/run/secrets`, never as an environment variable, so `docker inspect` do
 `config/users.yml` and `config/opensearch/internal_users.yml` hold only bcrypt hashes.
 After a change of the OpenArch admin password or the MongoDB OpenArch password, run
 `openarch render`, then `openarch up`.
-The MongoDB root password and the OpenSearch passwords apply only when the data is created.
+To change the MongoDB root or OpenSearch passwords, use `openarch secrets rotate`.
 OpenSearch serves plain HTTP inside the Docker network, with users and passwords required.
 {{- else }}
 

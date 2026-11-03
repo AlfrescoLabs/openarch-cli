@@ -83,15 +83,18 @@ func (w Workspace) ConfigHashes() []string {
 	s := w.Secrets
 	inputs := map[string][]string{
 		workspace.HashVarApp:        {"file:config/users.yml", s.MongoAppURI(), s.OpenSearchAppPassword},
+		workspace.HashVarMongoDB:    {s.MongoRootPassword, s.MongoAppPassword},
 		workspace.HashVarOpenSearch: {"file:config/opensearch/opensearch.yml", "file:" + templates.OpenSearchUsersFile, "file:config/opensearch/roles.yml", "file:config/opensearch/roles_mapping.yml", s.OpenSearchAppPassword},
 		workspace.HashVarDashboards: {s.DashboardsPassword},
 		workspace.HashVarProxy:      {"file:config/Caddyfile", "file:" + certFile(w), "file:" + keyFile(w)},
 	}
 	var env []string
+	seen := map[string]bool{}
 	for _, svc := range w.Config.Services() {
-		if svc.HashVar == "" {
+		if svc.HashVar == "" || seen[svc.HashVar] {
 			continue
 		}
+		seen[svc.HashVar] = true
 		h := sha256.New()
 		for _, in := range inputs[svc.HashVar] {
 			if p, ok := strings.CutPrefix(in, "file:"); ok {

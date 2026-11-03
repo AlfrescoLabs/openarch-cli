@@ -135,8 +135,8 @@ func (e Env) Marshal() []byte {
 #
 # After a change of the OpenArch admin password or the MongoDB app password, run
 # 'openarch render', then 'openarch up'.
-# The MongoDB root password and the OpenSearch passwords apply only when the data is
-# created, at the first start. Changing them later here has no effect on existing data.
+# Do not edit the MongoDB root or OpenSearch passwords here: the services keep the old
+# ones. Use 'openarch secrets rotate', which changes them in the services too.
 `)
 	for _, f := range e.fields() {
 		fmt.Fprintf(&b, "%s=%s\n", f.key, *f.ptr)

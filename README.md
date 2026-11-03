@@ -33,9 +33,10 @@ Work in progress. These commands work today:
 | `openarch upgrade` | Changes the OpenArch version, then checks the result |
 | `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
 | `openarch clean` | Stops the stack and deletes its data |
+| `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
 | `openarch version` | Prints the version |
 
-Next: password rotation.
+Next: the first release, with binaries for Linux, macOS and Windows.
 
 ## Requirements
 
@@ -370,9 +371,12 @@ Notes:
 - OpenArch always needs a user and password for its API. Only the health check, the Swagger UI and the
   API docs are public.
 - Inside the Docker network, OpenSearch uses plain HTTP, with users and passwords required.
-- The MongoDB root password and the OpenSearch passwords apply only when the data is created, at the
-  first start. To change the OpenArch admin password or the MongoDB `openarch` password, edit
-  `.env.local`, then run `openarch render` and `openarch up`.
+- `openarch secrets rotate` gives new random passwords to the OpenArch admin, the MongoDB users and
+  the OpenSearch users. It changes them in the running services, saves them in `.env.local`, and
+  recreates the services that use them. `--only` selects some of them, and `--dry-run` shows the plan.
+- Do not edit the MongoDB root or OpenSearch passwords in `.env.local` by hand: the services keep the
+  old ones. Use `openarch secrets rotate`. The OpenArch admin password and the MongoDB `openarch`
+  password can be edited by hand, followed by `openarch render` and `openarch up`.
 
 ## Output and exit codes
 

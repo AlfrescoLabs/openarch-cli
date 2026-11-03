@@ -91,6 +91,8 @@ services:
     image: {{ .Images.MongoDB }}
     hostname: mongo
     restart: unless-stopped
+    labels:
+      openarch.config-hash: ${OPENARCH_MONGODB_CONFIG_HASH:-}
 {{- if .Secure }}
     # A replica set with authentication needs a key file. With one node, a new
     # random key at each start is enough.
@@ -133,6 +135,8 @@ services:
   mongodb-init:
     image: {{ .Images.MongoDB }}
     restart: "no"
+    labels:
+      openarch.config-hash: ${OPENARCH_MONGODB_CONFIG_HASH:-}
     depends_on:
       - mongodb
     secrets:

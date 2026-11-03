@@ -14,6 +14,7 @@ type Service struct {
 // Hash variables used in compose.yaml labels.
 const (
 	HashVarApp        = "OPENARCH_APP_CONFIG_HASH"
+	HashVarMongoDB    = "OPENARCH_MONGODB_CONFIG_HASH"
 	HashVarOpenSearch = "OPENARCH_OPENSEARCH_CONFIG_HASH"
 	HashVarDashboards = "OPENARCH_DASHBOARDS_CONFIG_HASH"
 	HashVarProxy      = "OPENARCH_PROXY_CONFIG_HASH"
@@ -26,8 +27,9 @@ func (c Config) Services() []Service {
 		s = append(s, Service{Name: "data-init", OneShot: true})
 	}
 	s = append(s,
-		Service{Name: "mongodb"},
-		Service{Name: "mongodb-init", OneShot: true},
+		// mongodb-init must be recreated too: a restarted one-shot keeps its old secret files.
+		Service{Name: "mongodb", HashVar: HashVarMongoDB},
+		Service{Name: "mongodb-init", OneShot: true, HashVar: HashVarMongoDB},
 		Service{Name: "opensearch", HashVar: HashVarOpenSearch},
 		Service{Name: "openarch-app", HashVar: HashVarApp},
 	)
