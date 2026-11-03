@@ -237,3 +237,7 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 - End-to-end tests are `testscript` files in `testdata/script/`.
 - The templates have golden files in `internal/templates/testdata/`.
 - When Docker is installed, the tests also check each golden case with `docker compose config`.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
