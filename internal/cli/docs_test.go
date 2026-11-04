@@ -107,6 +107,7 @@ How to call it from a program or an AI agent:
 - Pass passwords on stdin (--password-stdin, --admin-password-stdin), never as arguments.
 - Run 'openarch help --output json' for every command, flag, default value, allowed value and exit code. 'openarch <command> --help --output json' describes one command.
 - Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
+- For MCP clients, 'openarch mcp --dir <folder>' runs an MCP server on stdio with the same commands as tools. Add --allow-destructive for down, clean, restore and the other tools that delete data.
 
 ## Exit codes
 

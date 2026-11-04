@@ -102,6 +102,7 @@ The current release is 0.2.1. The commands:
 | `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
 | `openarch clean` | Stops the stack and deletes its data |
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
+| `openarch mcp` | Runs an MCP server, so that AI agents can use the commands as tools |
 | `openarch self-update` | Replaces the binary with the latest release, after a signature check |
 | `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
 | `openarch version` | Prints the version |
@@ -516,6 +517,29 @@ examples, plus the exit codes. `openarch <command> --help --output json` describ
 | 4 | A service is not healthy |
 | 5 | Remote API error |
 | 6 | Authentication failed |
+
+## MCP server
+
+`openarch mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server on stdio, so that an
+AI agent can install and operate OpenArch with the same commands. Each tool runs one command with
+`--output json` and returns its result. A failed command gives an error result that starts with the exit
+code.
+
+```
+# Claude Code
+claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
+
+# Any MCP client: the command and its arguments
+openarch mcp --dir /path/to/my-openarch
+```
+
+- `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
+- Tools that stop services or delete data (`down`, `clean`, `restore`, `secrets_rotate`, `users_delete`,
+  `config_delete`) exist only with `--allow-destructive`.
+- Tools never take a password and never return one. Commands that need a password as input
+  (`config set`, `users add`, `users set-password`) are not tools.
+- The tool parameters are the flags of each command. Progress goes to MCP progress notifications, and logs
+  go to stderr.
 
 ## Development
 

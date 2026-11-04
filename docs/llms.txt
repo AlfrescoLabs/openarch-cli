@@ -9,6 +9,7 @@ How to call it from a program or an AI agent:
 - Pass passwords on stdin (--password-stdin, --admin-password-stdin), never as arguments.
 - Run 'openarch help --output json' for every command, flag, default value, allowed value and exit code. 'openarch <command> --help --output json' describes one command.
 - Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
+- For MCP clients, 'openarch mcp --dir <folder>' runs an MCP server on stdio with the same commands as tools. Add --allow-destructive for down, clean, restore and the other tools that delete data.
 
 ## Exit codes
 
@@ -45,6 +46,7 @@ How to call it from a program or an AI agent:
 - [openarch down](commands/openarch_down.md): Stop OpenArch and remove its containers, keeping the data
 - [openarch init](commands/openarch_init.md): Create an OpenArch workspace
 - [openarch logs](commands/openarch_logs.md): Show the logs of the services
+- [openarch mcp](commands/openarch_mcp.md): Run an MCP server that exposes the commands as tools
 - [openarch query](commands/openarch_query.md): Run a query and list the documents found
 - [openarch render](commands/openarch_render.md): Write the workspace files again from openarch.yaml
 - [openarch restore](commands/openarch_restore.md): Replace the data of the workspace with a backup
