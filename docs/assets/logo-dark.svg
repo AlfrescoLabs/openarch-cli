@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 128" width="660" height="128">
+  <rect width="128" height="128" rx="28" fill="#191F5E"/>
+  <g fill="none" stroke-width="12">
+    <path d="M30 104V62" stroke="#13EAC1" stroke-linecap="round"/>
+    <path d="M98 104V62" stroke="#F1CB61" stroke-linecap="round"/>
+    <path d="M30 62A34 34 0 0 1 64 28" stroke="#52A1FF"/>
+    <path d="M64 28A34 34 0 0 1 98 62" stroke="#6E33FF"/>
+  </g>
+  <path d="M48 70l12 10-12 10M66 92h16" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="152" y="88" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="64" font-weight="700"><tspan fill="#F4F6FE">OpenArch</tspan> <tspan fill="#13EAC1">CLI</tspan></text>
+</svg>
