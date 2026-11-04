@@ -16,6 +16,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
 	"github.com/AlfrescoLabs/openarch-cli/internal/generate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
+	"github.com/AlfrescoLabs/openarch-cli/internal/selfupdate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/stack"
 	"github.com/AlfrescoLabs/openarch-cli/internal/term"
 )
@@ -50,12 +51,14 @@ type App struct {
 	doctorEnv   func() doctor.Env
 	generateEnv func() generate.Env
 	stackEnv    func() stack.Env
+	// selfUpdateEnv gives self-update access to GitHub, Sigstore and the executable.
+	selfUpdateEnv func() selfupdate.Env
 	// credStore is opened on first use. Tests set it to a memory store.
 	credStore credstore.Store
 }
 
 func newApp(s Streams) *App {
-	return &App{Streams: s, doctorEnv: doctor.SystemEnv, generateEnv: generate.SystemEnv, stackEnv: stack.SystemEnv}
+	return &App{Streams: s, doctorEnv: doctor.SystemEnv, generateEnv: generate.SystemEnv, stackEnv: stack.SystemEnv, selfUpdateEnv: selfupdate.SystemEnv}
 }
 
 // Interactive reports whether commands may prompt the user.
@@ -146,7 +149,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 
 	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
 		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newCleanCmd(app), newAPICmd(app), newConfigCmd(app),
-		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newVersionCmd(app))
+		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newSelfUpdateCmd(app), newVersionCmd(app))
 	addCompletion(app, root)
 	return root
 }

@@ -75,13 +75,21 @@ repository (keyless, with the GitHub Actions identity). Each archive also has an
 (`.sbom.json`, SPDX format).
 
 ```
-curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt.pem"
-curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt.sig"
+curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/checksums.txt.sigstore.json"
 cosign verify-blob checksums.txt \
-  --certificate checksums.txt.pem --signature checksums.txt.sig \
+  --bundle checksums.txt.sigstore.json \
   --certificate-identity "https://github.com/AlfrescoLabs/openarch-cli/.github/workflows/release.yml@refs/tags/v$VERSION" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+Release 0.1.0 has `checksums.txt.sig` and `checksums.txt.pem` instead of the bundle: use
+`--certificate checksums.txt.pem --signature checksums.txt.sig` in place of `--bundle`.
+
+### Update
+
+`openarch self-update` replaces the binary with the latest release. It checks the same signature and
+the SHA-256 of the archive first, so it needs no cosign. `openarch self-update --check` only reports if
+a newer release exists. Installs by Homebrew or Scoop are updated with those tools instead.
 
 ### Build from source
 

@@ -53,6 +53,7 @@ openarch [flags]
 * [openarch render](openarch_render.md)	 - Write the workspace files again from openarch.yaml
 * [openarch restore](openarch_restore.md)	 - Replace the data of the workspace with a backup
 * [openarch secrets](openarch_secrets.md)	 - Manage the passwords of a workspace
+* [openarch self-update](openarch_self-update.md)	 - Replace this binary with the latest release
 * [openarch smoke-test](openarch_smoke-test.md)	 - Check OpenArch end to end: create, read, query and delete a document
 * [openarch status](openarch_status.md)	 - Show the state of each service and of the OpenArch API
 * [openarch up](openarch_up.md)	 - Start OpenArch and wait until it is healthy

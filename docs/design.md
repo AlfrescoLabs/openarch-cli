@@ -33,6 +33,7 @@ Every command follows these rules.
 | Credential store | `zalando/go-keyring` + file fallback | Pure Go. The Docker credential helpers for macOS and Secret Service need cgo, which blocks cross-compiling. |
 | CLI tests | `rogpeppe/go-internal/testscript` | Golden tests of real CLI runs. |
 | Release | GoReleaser + cosign + SBOM | Cross-platform builds and signed artifacts. |
+| Signature check | `sigstore-go` | `self-update` checks the keyless release signature inside the binary, with no cosign install. |
 | Lint | `golangci-lint` | Standard. |
 
 ## Workspace
@@ -150,6 +151,17 @@ For each value, the first source that has it wins:
 - Passwords never appear in logs, `--verbose` output or error messages. The HTTP client redacts the `Authorization` header.
 - `--insecure` prints a warning every time it is used.
 - A 401 or 403 gives exit code 6. The hint names the context and endpoint that were used.
+
+## Self-update
+
+`openarch self-update` replaces the running binary with a GitHub release:
+
+1. The latest tag comes from the redirect of `/releases/latest`, so no GitHub API token is needed.
+2. `checksums.txt.sigstore.json` must be a valid Sigstore bundle for `checksums.txt`. The certificate identity must be the release workflow of this repository at that exact tag, issued by GitHub Actions. The bundle needs a certificate timestamp, a transparency log entry and a timestamp. The Sigstore trusted root comes through TUF and is cached in the user cache folder.
+3. Only then the archive is downloaded, and its SHA-256 must match `checksums.txt`.
+4. The new binary is written next to the old one and renamed over it. On Windows the running binary is first renamed to `openarch.exe.old`, which the next run deletes.
+
+Builds from source and installs by Homebrew or Scoop are not replaced unless `--force` is set.
 
 ## Content Lake integration
 

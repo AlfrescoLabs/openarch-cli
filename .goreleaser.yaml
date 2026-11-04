@@ -42,14 +42,14 @@ sboms:
   - artifacts: archive
 
 # Keyless signature of checksums.txt with cosign, from the GitHub Actions OIDC identity.
+# A Sigstore bundle holds the signature, the certificate and the transparency
+# log proof in one file. openarch self-update checks it.
 signs:
   - cmd: cosign
-    certificate: "${artifact}.pem"
-    signature: "${artifact}.sig"
+    signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
