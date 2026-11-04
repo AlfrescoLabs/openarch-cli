@@ -10,7 +10,7 @@ Docker resources, free ports and access to the image registry.
 Each check reports ok, warn, fail or skip, and a fix when something is wrong.
 Exit code 3 means at least one check failed. Warnings do not change the exit code.
 
-Checks: docker.cli, docker.daemon, docker.compose, docker.memory, docker.cpus, port.8080, network.ghcr
+Checks: docker.cli, docker.daemon, docker.compose, docker.memory, docker.cpus, linux.max_map_count, port.8080, network.ghcr
 (linux.max_map_count runs only on Linux; one port.<n> check runs for each --port)
 
 Inside a workspace, the default ports are the ones openarch.yaml publishes.

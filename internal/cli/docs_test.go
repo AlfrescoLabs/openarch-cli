@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra/doc"
+
+	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
 )
 
 var updateDocs = flag.Bool("update", false, "rewrite docs/commands")
@@ -19,7 +21,14 @@ const docsDir = "../../docs/commands"
 func TestCommandDocs(t *testing.T) {
 	t.Setenv(envOutput, "")
 	tmp := t.TempDir()
-	root := newRootCmd(newApp(Streams{}))
+	app := newApp(Streams{})
+	// The doctor help lists the checks for the host OS. Linux has the most checks.
+	app.doctorEnv = func() doctor.Env {
+		env := doctor.SystemEnv()
+		env.GOOS = "linux"
+		return env
+	}
+	root := newRootCmd(app)
 	root.DisableAutoGenTag = true
 	if err := doc.GenMarkdownTree(root, tmp); err != nil {
 		t.Fatal(err)
