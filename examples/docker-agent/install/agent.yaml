@@ -1,0 +1,22 @@
+# Docker Agent that installs and operates OpenArch through 'openarch mcp',
+# with a local model on Docker Model Runner. run.sh sets the workspace and
+# the CLI config through environment variables, and can change the model.
+models:
+  local:
+    provider: dmr
+    model: hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M
+
+agents:
+  root:
+    model: local
+    description: Installs and operates OpenArch
+    instruction: |
+      You install and operate OpenArch with the openarch tools. Use only these tools.
+      Every fact must come from a tool call. Call one tool, wait for its real result, then decide the next step.
+      Never write a tool result yourself, and never show commands for the user to run.
+      When a tool returns an error, read the exit code and the hint, then fix the problem.
+      At the end, give a short report: what you did, and the result of each step.
+    toolsets:
+      - type: mcp
+        command: openarch
+        args: [mcp]

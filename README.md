@@ -547,6 +547,8 @@ openarch mcp --dir /path/to/my-openarch
   (`config set`, `users add`, `users set-password`) are not tools.
 - The tool parameters are the flags of each command. Progress goes to MCP progress notifications, and logs
   go to stderr.
+- [examples/docker-agent/install](examples/docker-agent/install) installs OpenArch with a local agent and a
+  local model (Docker Agent and Docker Model Runner).
 - A result longer than `--max-result-bytes` (default 16384, about 4000 tokens) is cut, with a note that
   names the parameters for a smaller result. Use `0` for no limit.
 
