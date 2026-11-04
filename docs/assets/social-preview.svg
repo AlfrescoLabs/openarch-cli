@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <rect width="1280" height="640" fill="#191F5E"/>
+  <g transform="translate(96 160) scale(2.5)">
+    <rect width="128" height="128" rx="28" fill="#232A72"/>
+    <g fill="none" stroke-width="12">
+      <path d="M30 104V62" stroke="#13EAC1" stroke-linecap="round"/>
+      <path d="M98 104V62" stroke="#F1CB61" stroke-linecap="round"/>
+      <path d="M30 62A34 34 0 0 1 64 28" stroke="#52A1FF"/>
+      <path d="M64 28A34 34 0 0 1 98 62" stroke="#6E33FF"/>
+    </g>
+    <path d="M48 70l12 10-12 10M66 92h16" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="496" y="236" font-size="76" font-weight="700"><tspan fill="#F4F6FE">OpenArch</tspan> <tspan fill="#13EAC1">CLI</tspan></text>
+    <text x="496" y="292" font-size="25" fill="#F4F6FE">Install and run OpenArch with Docker Compose</text>
+    <g font-size="26" fill="#F4F6FE">
+      <rect x="496" y="352" width="14" height="14" rx="3" fill="#13EAC1"/>
+      <text x="528" y="366">One command from zero to a healthy stack</text>
+      <rect x="496" y="404" width="14" height="14" rx="3" fill="#52A1FF"/>
+      <text x="528" y="418">JSON output for scripts and AI agents</text>
+      <rect x="496" y="456" width="14" height="14" rx="3" fill="#F1CB61"/>
+      <text x="528" y="470">Signed releases, secure by default</text>
+    </g>
+    <text x="96" y="572" font-size="24" fill="#52A1FF">github.com/AlfrescoLabs/openarch-cli</text>
+  </g>
+  <rect x="0" y="624" width="320" height="16" fill="#13EAC1"/>
+  <rect x="320" y="624" width="320" height="16" fill="#52A1FF"/>
+  <rect x="640" y="624" width="320" height="16" fill="#6E33FF"/>
+  <rect x="960" y="624" width="320" height="16" fill="#F1CB61"/>
+</svg>
