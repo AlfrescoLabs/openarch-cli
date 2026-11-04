@@ -1,8 +1,6 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img alt="OpenArch CLI" src="docs/assets/logo.svg" width="420">
-  </picture>
+  <img alt="OpenArch CLI" src="docs/assets/logo.svg#gh-light-mode-only" width="420">
+  <img alt="OpenArch CLI" src="docs/assets/logo-dark.svg#gh-dark-mode-only" width="420">
 </p>
 
 <p align="center">
