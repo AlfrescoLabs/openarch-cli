@@ -13,7 +13,7 @@ The same commands work for people and for scripts or AI agents:
 
 ## Status
 
-Version 0.1.0 is the first release. The commands:
+The current release is 0.2.0. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -34,6 +34,8 @@ Version 0.1.0 is the first release. The commands:
 | `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
 | `openarch clean` | Stops the stack and deletes its data |
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
+| `openarch self-update` | Replaces the binary with the latest release, after a signature check |
+| `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
 | `openarch version` | Prints the version |
 
 ## Requirements
@@ -46,12 +48,30 @@ On native Linux, OpenSearch needs `vm.max_map_count` set to at least 262144. `op
 
 ## Install
 
-Download the archive for your system from the
+With Homebrew (macOS and Linux):
+
+```
+brew install AlfrescoLabs/tap/openarch
+```
+
+With Scoop (Windows):
+
+```
+scoop bucket add alfrescolabs https://github.com/AlfrescoLabs/scoop-bucket
+scoop install openarch
+```
+
+Homebrew also installs the shell completions. Update with `brew upgrade openarch` or
+`scoop update openarch`.
+
+### Manual install
+
+Or download the archive for your system from the
 [releases page](https://github.com/AlfrescoLabs/openarch-cli/releases): Linux, macOS and Windows, on
 amd64 or arm64. Each archive has the `openarch` binary, the license, this README and the walkthrough.
 
 ```
-VERSION=0.1.0
+VERSION=0.2.0
 OS=linux        # or darwin, windows
 ARCH=amd64      # or arm64
 curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/openarch_${VERSION}_${OS}_${ARCH}.tar.gz"
