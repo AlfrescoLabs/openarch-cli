@@ -117,3 +117,14 @@ func TestMCPPositionalArgument(t *testing.T) {
 		t.Errorf("isError=%v text=%q", res.IsError, text)
 	}
 }
+
+func TestMCPInitKeepsSecureDefaults(t *testing.T) {
+	for _, tool := range buildMCPTools(newRootCmd(newApp(Streams{}))) {
+		if tool.Name == "init" && !strings.HasPrefix(tool.Description, mcpSecureDefaults) {
+			t.Errorf("init description = %.80q", tool.Description)
+		}
+	}
+	if !strings.Contains(mcpInstructions, mcpSecureDefaults) {
+		t.Error("the server instructions do not ask to keep the secure defaults")
+	}
+}

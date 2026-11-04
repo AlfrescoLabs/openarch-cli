@@ -22,6 +22,8 @@ type mcpTool struct {
 	args     []mcpserver.Arg
 	defaults map[string]string
 	extra    []string
+	// note comes before the command help in the tool description.
+	note string
 }
 
 // mcpTools is the list of tools. Commands that need a password as input
@@ -44,7 +46,7 @@ var mcpTools = []mcpTool{
 	{name: "config_whoami", title: "Show the connection in use", command: []string{"config", "whoami"}, kind: mcpserver.ReadOnly},
 	{name: "version", title: "Show the CLI version", command: []string{"version"}, kind: mcpserver.ReadOnly},
 
-	{name: "init", title: "Create a workspace", command: []string{"init"}, kind: mcpserver.Write},
+	{name: "init", title: "Create a workspace", command: []string{"init"}, kind: mcpserver.Write, note: mcpSecureDefaults},
 	{name: "render", title: "Write the workspace files again", command: []string{"render"}, kind: mcpserver.Write},
 	{name: "up", title: "Start the stack", command: []string{"up"}, kind: mcpserver.Write},
 	{name: "smoke_test", title: "Test OpenArch end to end", command: []string{"smoke-test"}, kind: mcpserver.Write},
@@ -123,7 +125,12 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool) mcpserver.O
 	}
 }
 
+// mcpSecureDefaults keeps agents from turning security off on their own.
+const mcpSecureDefaults = "Keep the defaults: they are secure. Use default-users, insecure-backends, " +
+	"bind-ip 0.0.0.0, expose or the tls options only when the user asks for them."
+
 const mcpInstructions = `These tools install and operate OpenArch with Docker Compose, in one workspace folder.
+` + mcpSecureDefaults + `
 To install: doctor, then init, then up (it waits until OpenArch is healthy), then smoke_test.
 Every result is the JSON output of the matching openarch command. An error result starts with the exit code:
 1 error, 2 bad usage, 3 prerequisite missing, 4 service not healthy, 5 remote API error, 6 authentication failed.
@@ -136,6 +143,9 @@ func buildMCPTools(root *cobra.Command) []mcpserver.Tool {
 		desc := c.Short
 		if c.Long != "" {
 			desc = c.Long
+		}
+		if t.note != "" {
+			desc = t.note + "\n\n" + desc
 		}
 		var flags []mcpserver.Flag
 		for _, f := range helpFlags(c.NonInheritedFlags()) {
