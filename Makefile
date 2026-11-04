@@ -8,7 +8,7 @@ LDFLAGS := -s -w \
 	-X $(PKG)/internal/version.Commit=$(COMMIT) \
 	-X $(PKG)/internal/version.Date=$(DATE)
 
-.PHONY: build test lint fmt tidy generate docs snapshot clean
+.PHONY: build test lint fmt tidy generate docs demo snapshot clean
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/openarch
@@ -32,6 +32,10 @@ generate:
 # Rewrites the command reference in docs/commands.
 docs:
 	go test ./internal/cli -run TestCommandDocs -update
+
+# Records docs/demo/demo.gif with VHS. Needs Docker; starts and deletes a stack.
+demo: build
+	vhs docs/demo/demo.tape
 
 snapshot:
 	goreleaser release --snapshot --clean
