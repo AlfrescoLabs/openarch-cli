@@ -125,11 +125,17 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool) mcpserver.O
 	}
 }
 
+// mcpToolUse keeps models from writing tool results themselves instead of
+// calling the tools.
+const mcpToolUse = "Every fact must come from a tool call. Call one tool, wait for its real result, " +
+	"then decide the next step. Never write a tool result yourself."
+
 // mcpSecureDefaults keeps agents from turning security off on their own.
 const mcpSecureDefaults = "Keep the defaults: they are secure. Use default-users, insecure-backends, " +
 	"bind-ip 0.0.0.0, expose or the tls options only when the user asks for them."
 
 const mcpInstructions = `These tools install and operate OpenArch with Docker Compose, in one workspace folder.
+` + mcpToolUse + `
 ` + mcpSecureDefaults + `
 To install: doctor, then init, then up (it waits until OpenArch is healthy), then smoke_test.
 Every result is the JSON output of the matching openarch command. An error result starts with the exit code:

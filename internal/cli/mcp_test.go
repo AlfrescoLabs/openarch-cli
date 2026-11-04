@@ -127,4 +127,7 @@ func TestMCPInitKeepsSecureDefaults(t *testing.T) {
 	if !strings.Contains(mcpInstructions, mcpSecureDefaults) {
 		t.Error("the server instructions do not ask to keep the secure defaults")
 	}
+	if !strings.Contains(mcpInstructions, mcpToolUse) {
+		t.Error("the server instructions do not ask to call the tools for every fact")
+	}
 }
