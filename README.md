@@ -13,7 +13,7 @@ The same commands work for people and for scripts or AI agents:
 
 ## Status
 
-The current release is 0.2.0. The commands:
+The current release is 0.2.1. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -71,7 +71,7 @@ Or download the archive for your system from the
 amd64 or arm64. Each archive has the `openarch` binary, the license, this README and the walkthrough.
 
 ```
-VERSION=0.2.0
+VERSION=0.2.1
 OS=linux        # or darwin, windows
 ARCH=amd64      # or arm64
 curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/openarch_${VERSION}_${OS}_${ARCH}.tar.gz"
