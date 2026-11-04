@@ -59,7 +59,7 @@ snapshot:
 
 changelog:
   use: git
-  sort: asc
+  sort: ""
   filters:
     exclude:
       - "^Merge "

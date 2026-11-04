@@ -8,7 +8,7 @@ LDFLAGS := -s -w \
 	-X $(PKG)/internal/version.Commit=$(COMMIT) \
 	-X $(PKG)/internal/version.Date=$(DATE)
 
-.PHONY: build test lint fmt tidy generate snapshot clean
+.PHONY: build test lint fmt tidy generate docs snapshot clean
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/openarch
@@ -28,6 +28,10 @@ tidy:
 # Regenerates the OpenArch API client from api/openapi.json.
 generate:
 	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.json
+
+# Rewrites the command reference in docs/commands.
+docs:
+	go test ./internal/cli -run TestCommandDocs -update
 
 snapshot:
 	goreleaser release --snapshot --clean

@@ -417,6 +417,10 @@ Notes:
   old ones. Use `openarch secrets rotate`. The OpenArch admin password and the MongoDB `openarch`
   password can be edited by hand, followed by `openarch render` and `openarch up`.
 
+## Command reference
+
+Every command, with its flags and examples: [docs/commands/openarch.md](docs/commands/openarch.md).
+
 ## Output and exit codes
 
 Use `--output json` (or `OPENARCH_OUTPUT=json`) to get one JSON document on stdout. Errors are JSON
@@ -438,6 +442,7 @@ too in this mode. Logs and warnings always go to stderr.
 go test ./...
 go test ./internal/templates -update     # rewrite the golden files after a template change
 make generate                            # regenerate the API client from api/openapi.json
+make docs                                # rewrite docs/commands after a command or flag change
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 ```
 
@@ -446,6 +451,7 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 - When Docker is installed, the tests also check each golden case with `docker compose config`.
 - The API client in `internal/api/gen` is generated with `oapi-codegen` from `api/openapi.json`, the
   spec of a running OpenArch (`/v3/api-docs`). CI fails when the generated code is not up to date.
+- The command reference in `docs/commands` is built from the cobra commands. A test fails when it is not up to date.
 
 ## License
 
