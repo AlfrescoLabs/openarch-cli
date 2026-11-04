@@ -34,7 +34,7 @@ jobs:
       - name: Check the release signature
         run: go test ./internal/selfupdate -run TestReleaseBundle -v
         env:
-          OPENARCH_RELEASE_DIR: dist
+          OPENARCH_RELEASE_DIR: ${{ github.workspace }}/dist
           OPENARCH_RELEASE_TAG: ${{ github.ref_name }}
       # scripts/publish-packages.sh pushes these files to the tap and the bucket.
       - uses: actions/upload-artifact@v7
