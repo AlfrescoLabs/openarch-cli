@@ -31,6 +31,8 @@ func TestExitCodes(t *testing.T) {
 		{"unknown command", []string{"bogus"}, output.ExitUsage},
 		{"extra argument", []string{"version", "extra"}, output.ExitUsage},
 		{"invalid output format", []string{"version", "--output", "yaml"}, output.ExitUsage},
+		{"completion script", []string{"completion", "zsh"}, output.ExitOK},
+		{"unknown completion shell", []string{"completion", "bogus"}, output.ExitUsage},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

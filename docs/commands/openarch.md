@@ -42,6 +42,7 @@ openarch [flags]
 * [openarch api](openarch_api.md)	 - Call the OpenArch API
 * [openarch backup](openarch_backup.md)	 - Back up MongoDB, the OpenArch files and the OpenSearch indices
 * [openarch clean](openarch_clean.md)	 - Stop OpenArch and delete its data
+* [openarch completion](openarch_completion.md)	 - Generate the autocompletion script for the specified shell
 * [openarch config](openarch_config.md)	 - Manage saved connections (contexts)
 * [openarch doctor](openarch_doctor.md)	 - Check the prerequisites to run OpenArch
 * [openarch documents](openarch_documents.md)	 - Get and create documents

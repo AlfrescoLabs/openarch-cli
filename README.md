@@ -94,6 +94,27 @@ make build
 
 Without `make`: `go build -o bin/openarch ./cmd/openarch`.
 
+### Shell completion
+
+Completion knows the commands, the flag values, the services of the workspace (`openarch logs <Tab>`)
+and the saved contexts (`--context <Tab>`, `openarch config use <Tab>`).
+
+```
+# zsh: add to ~/.zshrc (needs compinit)
+source <(openarch completion zsh)
+
+# bash: add to ~/.bashrc (needs the bash-completion package)
+source <(openarch completion bash)
+
+# fish
+openarch completion fish > ~/.config/fish/completions/openarch.fish
+
+# PowerShell: add to $PROFILE
+openarch completion powershell | Out-String | Invoke-Expression
+```
+
+`openarch completion <shell> --help` shows more options.
+
 ## Quick start
 
 ```
