@@ -54,3 +54,32 @@ jobs:
         with:
           version: "~> v2"
           args: release --snapshot --clean --skip=sign
+
+  e2e:
+    name: e2e (${{ matrix.name }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: secure, volume
+            flags: ""
+          - name: secure, bind
+            flags: --storage bind
+            check-owners: "1"
+          - name: insecure
+            flags: --insecure-backends --default-users
+          - name: self-signed TLS
+            flags: --tls self-signed
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # OpenSearch needs this on native Linux Docker.
+      - run: sudo sysctl -w vm.max_map_count=262144
+      - run: test/e2e.sh bin/openarch ${{ matrix.flags }}
+        env:
+          E2E_CHECK_OWNERS: ${{ matrix.check-owners }}

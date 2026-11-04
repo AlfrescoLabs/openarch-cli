@@ -446,7 +446,8 @@ make docs                                # rewrite docs/commands after a command
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 ```
 
-- End-to-end tests are `testscript` files in `testdata/script/`.
+- CLI tests are `testscript` files in `testdata/script/`.
+- `test/e2e.sh bin/openarch [init flags]` runs the real stack with Docker: init, up, smoke test, restart, clean. CI runs it on Linux in 4 modes.
 - The templates have golden files in `internal/templates/testdata/`.
 - When Docker is installed, the tests also check each golden case with `docker compose config`.
 - The API client in `internal/api/gen` is generated with `oapi-codegen` from `api/openapi.json`, the
