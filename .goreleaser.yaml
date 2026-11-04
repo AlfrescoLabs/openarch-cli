@@ -72,3 +72,51 @@ release:
   draft: true
   prerelease: auto
   name_template: "openarch {{ .Version }}"
+
+# The tap and the bucket are shared by AlfrescoLabs tools. The release
+# workflow pushes to them with one deploy key each. The keys are empty in
+# snapshot mode, which writes the files to dist/ and pushes nothing.
+homebrew_casks:
+  - name: openarch
+    repository:
+      owner: AlfrescoLabs
+      name: homebrew-tap
+      branch: main
+      git:
+        url: "git@github.com:AlfrescoLabs/homebrew-tap.git"
+        private_key: '{{ envOrDefault "HOMEBREW_TAP_DEPLOY_KEY" "" }}'
+    directory: Casks
+    commit_author:
+      name: Angel Borroy
+      email: angel.fernandoborroy@hyland.com
+    commit_msg_template: "openarch {{ .Version }}"
+    homepage: https://github.com/AlfrescoLabs/openarch-cli
+    description: Install and operate OpenArch with Docker Compose
+    license: Apache-2.0
+    generate_completions_from_executable:
+      executable: openarch
+      shell_parameter_format: cobra
+    # The binaries have no Apple signature, so macOS would block a quarantined file.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/openarch"]
+          end
+
+scoops:
+  - name: openarch
+    repository:
+      owner: AlfrescoLabs
+      name: scoop-bucket
+      branch: main
+      git:
+        url: "git@github.com:AlfrescoLabs/scoop-bucket.git"
+        private_key: '{{ envOrDefault "SCOOP_BUCKET_DEPLOY_KEY" "" }}'
+    commit_author:
+      name: Angel Borroy
+      email: angel.fernandoborroy@hyland.com
+    commit_msg_template: "openarch {{ .Version }}"
+    homepage: https://github.com/AlfrescoLabs/openarch-cli
+    description: Install and operate OpenArch with Docker Compose
+    license: Apache-2.0
