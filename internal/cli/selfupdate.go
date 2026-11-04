@@ -68,6 +68,11 @@ either. --force replaces both.`,
 				res.Checked = true
 				return app.Printer.Print(res)
 			}
+			needed := plan.UpdateAvailable || (target != "" && plan.Target != current)
+			// A release that needs no update is up to date, whoever installed it.
+			if !needed && !force && selfupdate.IsRelease(current) {
+				return app.Printer.Print(res)
+			}
 			if !force {
 				if pm := selfupdate.PackageManager(plan.Executable); pm != "" {
 					hint := "Run: brew upgrade openarch"
@@ -80,10 +85,6 @@ either. --force replaces both.`,
 					return output.NewError(output.ExitError, "this is a build from source ("+current+"), not a release",
 						"Use --force to replace it with release "+plan.Target+".")
 				}
-			}
-			needed := plan.UpdateAvailable || (target != "" && plan.Target != current)
-			if !needed && !force {
-				return app.Printer.Print(res)
 			}
 			app.Log.Info("downloading", "asset", plan.Asset)
 			bin, err := selfupdate.Download(cmd.Context(), env, plan)

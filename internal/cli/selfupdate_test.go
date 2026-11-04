@@ -60,9 +60,15 @@ func TestSelfUpdateCheck(t *testing.T) {
 }
 
 func TestSelfUpdateUpToDate(t *testing.T) {
-	code, stdout, _ := runSelfUpdate(t, "0.2.0", "/usr/local/bin/openarch")
-	if code != 0 || !strings.Contains(stdout, "up to date") {
-		t.Errorf("exit %d, stdout %q", code, stdout)
+	for _, exe := range []string{
+		"/usr/local/bin/openarch",
+		"/opt/homebrew/Caskroom/openarch/0.2.0/openarch",
+		`C:\Users\me\scoop\apps\openarch\current\openarch.exe`,
+	} {
+		code, stdout, stderr := runSelfUpdate(t, "0.2.0", exe)
+		if code != 0 || !strings.Contains(stdout, "up to date") {
+			t.Errorf("%s: exit %d, stdout %q, stderr %q", exe, code, stdout, stderr)
+		}
 	}
 }
 
