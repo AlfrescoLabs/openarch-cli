@@ -24,6 +24,15 @@ current context.
 openarch config [flags]
 ```
 
+### Examples
+
+```
+  openarch config set --name prod -s https://openarch.example.com -u admin
+  openarch config list
+  openarch config use prod
+  openarch config whoami --output json
+```
+
 ### Options
 
 ```

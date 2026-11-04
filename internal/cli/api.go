@@ -92,6 +92,8 @@ variables (OPENARCH_URL, OPENARCH_USER, OPENARCH_PASSWORD), the workspace
 Workspace credentials are used only with the workspace URL.
 
 Exit code 6 means the credentials are missing or wrong.`,
+		Example: `  openarch api ping
+  openarch api ping --context prod --output json`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}

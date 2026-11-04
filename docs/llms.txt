@@ -1,0 +1,69 @@
+# OpenArch CLI
+
+> openarch is a command line tool to install and run OpenArch (https://github.com/hyland/OpenArch) with Docker Compose. Every command supports --output json, and the exit codes are stable.
+
+How to call it from a program or an AI agent:
+
+- Add --output json (or set OPENARCH_OUTPUT=json). stdout then holds exactly one JSON document, also for errors: {"error": {"code": "...", "message": "...", "hint": "..."}}. Logs and warnings go to stderr.
+- Add --non-interactive, so that no command waits for input.
+- Pass passwords on stdin (--password-stdin, --admin-password-stdin), never as arguments.
+- Run 'openarch help --output json' for every command, flag, default value, allowed value and exit code. 'openarch <command> --help --output json' describes one command.
+- Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
+
+## Exit codes
+
+- 0 ok: OK
+- 1 error: Error
+- 2 usage: Bad usage or input
+- 3 prerequisite: A prerequisite is missing
+- 4 unhealthy: A service is not healthy
+- 5 remote: Remote API error
+- 6 auth: Authentication failed
+
+## Commands
+
+- [openarch api](commands/openarch_api.md): Call the OpenArch API
+- [openarch api ping](commands/openarch_api_ping.md): Check that OpenArch answers and that the credentials work
+- [openarch backup](commands/openarch_backup.md): Back up MongoDB, the OpenArch files and the OpenSearch indices
+- [openarch clean](commands/openarch_clean.md): Stop OpenArch and delete its data
+- [openarch completion](commands/openarch_completion.md): Generate the autocompletion script for the specified shell
+- [openarch completion bash](commands/openarch_completion_bash.md): Generate the autocompletion script for bash
+- [openarch completion fish](commands/openarch_completion_fish.md): Generate the autocompletion script for fish
+- [openarch completion powershell](commands/openarch_completion_powershell.md): Generate the autocompletion script for powershell
+- [openarch completion zsh](commands/openarch_completion_zsh.md): Generate the autocompletion script for zsh
+- [openarch config](commands/openarch_config.md): Manage saved connections (contexts)
+- [openarch config delete](commands/openarch_config_delete.md): Delete a context and its stored passwords
+- [openarch config get](commands/openarch_config_get.md): Show a context
+- [openarch config list](commands/openarch_config_list.md): List the contexts
+- [openarch config set](commands/openarch_config_set.md): Save a remote connection and its password
+- [openarch config use](commands/openarch_config_use.md): Select the current context
+- [openarch config whoami](commands/openarch_config_whoami.md): Show which URL and user a command would use, and where they come from
+- [openarch doctor](commands/openarch_doctor.md): Check the prerequisites to run OpenArch
+- [openarch documents](commands/openarch_documents.md): Get and create documents
+- [openarch documents create](commands/openarch_documents_create.md): Create a document under a parent
+- [openarch documents get](commands/openarch_documents_get.md): Show a document
+- [openarch down](commands/openarch_down.md): Stop OpenArch and remove its containers, keeping the data
+- [openarch init](commands/openarch_init.md): Create an OpenArch workspace
+- [openarch logs](commands/openarch_logs.md): Show the logs of the services
+- [openarch query](commands/openarch_query.md): Run a query and list the documents found
+- [openarch render](commands/openarch_render.md): Write the workspace files again from openarch.yaml
+- [openarch restore](commands/openarch_restore.md): Replace the data of the workspace with a backup
+- [openarch secrets](commands/openarch_secrets.md): Manage the passwords of a workspace
+- [openarch secrets rotate](commands/openarch_secrets_rotate.md): Give new passwords to the users of OpenArch, MongoDB and OpenSearch
+- [openarch self-update](commands/openarch_self-update.md): Replace this binary with the latest release
+- [openarch smoke-test](commands/openarch_smoke-test.md): Check OpenArch end to end: create, read, query and delete a document
+- [openarch status](commands/openarch_status.md): Show the state of each service and of the OpenArch API
+- [openarch up](commands/openarch_up.md): Start OpenArch and wait until it is healthy
+- [openarch upgrade](commands/openarch_upgrade.md): Change the OpenArch version and check the result
+- [openarch users](commands/openarch_users.md): Manage the OpenArch users of a workspace
+- [openarch users add](commands/openarch_users_add.md): Add a user
+- [openarch users delete](commands/openarch_users_delete.md): Delete a user
+- [openarch users list](commands/openarch_users_list.md): List the users
+- [openarch users set-password](commands/openarch_users_set-password.md): Change the password of a user
+- [openarch version](commands/openarch_version.md): Print version information
+
+## Docs
+
+- [README](../README.md): install, quick start, workspace options, security
+- [Walkthrough](walkthrough.md): a tour of every feature in a temporary folder
+- [Design](design.md): how the CLI and the workspace files are built

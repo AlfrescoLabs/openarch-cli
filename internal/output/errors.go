@@ -17,12 +17,31 @@ const (
 
 // codeNames are the stable values of the "code" key in JSON errors.
 var codeNames = map[ExitCode]string{
+	ExitOK:           "ok",
 	ExitError:        "error",
 	ExitUsage:        "usage",
 	ExitPrerequisite: "prerequisite",
 	ExitUnhealthy:    "unhealthy",
 	ExitRemote:       "remote",
 	ExitAuth:         "auth",
+}
+
+// ExitCodeInfo describes one exit code.
+type ExitCodeInfo struct {
+	Code    int    `json:"code"`
+	Name    string `json:"name"`
+	Meaning string `json:"meaning"`
+}
+
+// ExitCodes lists every exit code, in order.
+func ExitCodes() []ExitCodeInfo {
+	meanings := []string{"OK", "Error", "Bad usage or input", "A prerequisite is missing",
+		"A service is not healthy", "Remote API error", "Authentication failed"}
+	list := make([]ExitCodeInfo, len(meanings))
+	for i, m := range meanings {
+		list[i] = ExitCodeInfo{Code: i, Name: ExitCode(i).Name(), Meaning: m}
+	}
+	return list
 }
 
 // Name returns the stable name of the exit code.

@@ -73,6 +73,8 @@ func newDocumentsCmd(app *App) *cobra.Command {
 when the value starts with "/" (the root is "/").
 
 With --output json, a document is the server response as is.`,
+		Example: `  openarch documents get /
+  openarch documents create --parent / --type SysFolder --name projects`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
@@ -285,6 +287,9 @@ it starts. These commands change that file (passwords as bcrypt hashes), and
 The admin user belongs to the workspace: its password is in .env.local, and
 'users set-password admin' changes both files. The passwords of other users are
 stored nowhere else.`,
+		Example: `  openarch users list
+  openarch users add alice
+  openarch users set-password alice`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}

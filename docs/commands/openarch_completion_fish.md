@@ -21,6 +21,12 @@ You will need to start a new shell for this setup to take effect.
 openarch completion fish [flags]
 ```
 
+### Examples
+
+```
+  openarch completion fish > ~/.config/fish/completions/openarch.fish
+```
+
 ### Options
 
 ```

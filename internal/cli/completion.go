@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -22,21 +23,30 @@ func addCompletion(app *App, root *cobra.Command) {
 	comp.Args = noArgs
 	// Without RunE, cobra shows the help and skips Args, so an unknown shell would exit 0.
 	comp.RunE = func(cmd *cobra.Command, _ []string) error { return cmd.Help() }
+	comp.Example = `  source <(openarch completion zsh)
+  openarch completion fish > ~/.config/fish/completions/openarch.fish`
+	shellExamples := map[string]string{
+		"bash":       "  source <(openarch completion bash)",
+		"zsh":        "  source <(openarch completion zsh)",
+		"fish":       "  openarch completion fish > ~/.config/fish/completions/openarch.fish",
+		"powershell": "  openarch completion powershell | Out-String | Invoke-Expression",
+	}
 	for _, c := range comp.Commands() {
 		c.Args = noArgs
+		c.Example = shellExamples[c.Name()]
 	}
 
 	pf := root.PersistentFlags()
-	must(root.RegisterFlagCompletionFunc("output", fixed(string(output.Text), string(output.JSON))))
+	must(flagValues(root, "output", string(output.Text), string(output.JSON)))
 	must(root.RegisterFlagCompletionFunc("context", app.completeContexts))
 	must(pf.SetAnnotation("dir", cobra.BashCompSubdirsInDir, []string{}))
 
 	initCmd := mustFind(root, "init")
-	must(initCmd.RegisterFlagCompletionFunc("storage", fixed(workspace.StorageModes...)))
-	must(initCmd.RegisterFlagCompletionFunc("tls", fixed(workspace.TLSModes...)))
-	must(initCmd.RegisterFlagCompletionFunc("bind-ip", fixed("127.0.0.1", "0.0.0.0")))
-	must(initCmd.RegisterFlagCompletionFunc("expose", fixed(workspace.ExposeOptions...)))
-	must(initCmd.RegisterFlagCompletionFunc("with", fixed(workspace.WithOptions...)))
+	must(flagValues(initCmd, "storage", workspace.StorageModes...))
+	must(flagValues(initCmd, "tls", workspace.TLSModes...))
+	must(flagValues(initCmd, "bind-ip", "127.0.0.1", "0.0.0.0"))
+	must(flagValues(initCmd, "expose", workspace.ExposeOptions...))
+	must(flagValues(initCmd, "with", workspace.WithOptions...))
 	must(initCmd.MarkFlagFilename("cert", "pem", "crt"))
 	must(initCmd.MarkFlagFilename("key", "pem", "key"))
 	must(initCmd.MarkFlagFilename("from", "yaml", "yml"))
@@ -45,8 +55,8 @@ func addCompletion(app *App, root *cobra.Command) {
 	must(mustFind(root, "doctor").RegisterFlagCompletionFunc("check", func(*cobra.Command, []string, string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return doctor.IDs(app.doctorEnv(), doctor.Options{}), cobra.ShellCompDirectiveNoFileComp
 	}))
-	must(mustFind(root, "secrets", "rotate").RegisterFlagCompletionFunc("only", fixed(stack.RotateTargets...)))
-	must(mustFind(root, "config", "set").RegisterFlagCompletionFunc("system", fixed(contexts.Systems...)))
+	must(flagValues(mustFind(root, "secrets", "rotate"), "only", stack.RotateTargets...))
+	must(flagValues(mustFind(root, "config", "set"), "system", contexts.Systems...))
 	must(mustFind(root, "config", "get").RegisterFlagCompletionFunc("name", app.completeContexts))
 	for _, name := range []string{"use", "delete"} {
 		c := mustFind(root, "config", name)
@@ -87,6 +97,26 @@ func (a *App) completeServices(_ *cobra.Command, args []string, _ string) ([]cob
 		}
 	}
 	return names, cobra.ShellCompDirectiveNoFileComp
+}
+
+// valuesAnnotation keeps the fixed values of a flag, for the JSON help.
+const valuesAnnotation = "openarch_values"
+
+// flagValues completes the flag name of cmd with a fixed list of values and
+// records the list for the JSON help.
+func flagValues(cmd *cobra.Command, name string, values ...string) error {
+	f := cmd.Flags().Lookup(name)
+	if f == nil {
+		f = cmd.PersistentFlags().Lookup(name)
+	}
+	if f == nil {
+		return fmt.Errorf("completion: no flag %s on %s", name, cmd.CommandPath())
+	}
+	if f.Annotations == nil {
+		f.Annotations = map[string][]string{}
+	}
+	f.Annotations[valuesAnnotation] = values
+	return cmd.RegisterFlagCompletionFunc(name, fixed(values...))
 }
 
 func fixed(values ...string) cobra.CompletionFunc {

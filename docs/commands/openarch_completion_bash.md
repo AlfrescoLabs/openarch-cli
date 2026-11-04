@@ -30,6 +30,12 @@ You will need to start a new shell for this setup to take effect.
 openarch completion bash
 ```
 
+### Examples
+
+```
+  source <(openarch completion bash)
+```
+
 ### Options
 
 ```

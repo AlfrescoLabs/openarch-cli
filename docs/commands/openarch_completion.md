@@ -12,6 +12,13 @@ See each sub-command's help for details on how to use the generated script.
 openarch completion [flags]
 ```
 
+### Examples
+
+```
+  source <(openarch completion zsh)
+  openarch completion fish > ~/.config/fish/completions/openarch.fish
+```
+
 ### Options
 
 ```

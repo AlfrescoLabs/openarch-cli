@@ -43,6 +43,10 @@ with a warning. OPENARCH_CREDENTIAL_STORE=keychain|file forces a backend.
 Commands that call the API use, in this order: --context or
 OPENARCH_CONTEXT, then the workspace in --dir or the current folder, then the
 current context.`,
+		Example: `  openarch config set --name prod -s https://openarch.example.com -u admin
+  openarch config list
+  openarch config use prod
+  openarch config whoami --output json`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}

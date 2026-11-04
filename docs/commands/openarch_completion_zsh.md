@@ -32,6 +32,12 @@ You will need to start a new shell for this setup to take effect.
 openarch completion zsh [flags]
 ```
 
+### Examples
+
+```
+  source <(openarch completion zsh)
+```
+
 ### Options
 
 ```

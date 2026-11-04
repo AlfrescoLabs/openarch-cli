@@ -18,6 +18,12 @@ to your powershell profile.
 openarch completion powershell [flags]
 ```
 
+### Examples
+
+```
+  openarch completion powershell | Out-String | Invoke-Expression
+```
+
 ### Options
 
 ```

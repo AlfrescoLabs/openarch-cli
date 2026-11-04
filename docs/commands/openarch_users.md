@@ -18,6 +18,14 @@ stored nowhere else.
 openarch users [flags]
 ```
 
+### Examples
+
+```
+  openarch users list
+  openarch users add alice
+  openarch users set-password alice
+```
+
 ### Options
 
 ```

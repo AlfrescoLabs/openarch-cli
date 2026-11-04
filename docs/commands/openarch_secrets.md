@@ -6,6 +6,13 @@ Manage the passwords of a workspace
 openarch secrets [flags]
 ```
 
+### Examples
+
+```
+  openarch secrets rotate
+  openarch secrets rotate --dry-run --output json
+```
+
 ### Options
 
 ```

@@ -503,6 +503,10 @@ Every command, with its flags and examples: [docs/commands/openarch.md](docs/com
 Use `--output json` (or `OPENARCH_OUTPUT=json`) to get one JSON document on stdout. Errors are JSON
 too in this mode. Logs and warnings always go to stderr.
 
+`openarch help --output json` lists every command with its flags, default values, allowed values and
+examples, plus the exit codes. `openarch <command> --help --output json` describes one command.
+[docs/llms.txt](docs/llms.txt) gives the same overview to AI agents in the [llms.txt](https://llmstxt.org) format.
+
 | Code | Meaning |
 | --- | --- |
 | 0 | OK |

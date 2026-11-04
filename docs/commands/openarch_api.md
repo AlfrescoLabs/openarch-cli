@@ -17,6 +17,13 @@ Exit code 6 means the credentials are missing or wrong.
 openarch api [flags]
 ```
 
+### Examples
+
+```
+  openarch api ping
+  openarch api ping --context prod --output json
+```
+
 ### Options
 
 ```

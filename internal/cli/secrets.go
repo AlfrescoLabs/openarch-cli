@@ -32,8 +32,10 @@ func newSecretsCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secrets",
 		Short: "Manage the passwords of a workspace",
-		Args:  noArgs,
-		RunE:  func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
+		Example: `  openarch secrets rotate
+  openarch secrets rotate --dry-run --output json`,
+		Args: noArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
 	var only []string
 	var dry bool

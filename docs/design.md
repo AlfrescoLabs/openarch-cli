@@ -16,6 +16,7 @@ Every command follows these rules.
 6. **Transparent workspace.** The CLI writes plain files. A user can read them and run `docker compose` by hand.
 7. **No secrets in stdout** unless `--show-secrets` is set. No secrets in command arguments either: use `--password-stdin`, env vars or a hidden prompt.
 8. **Every security feature is optional.** A user can install everything with plain HTTP and no generated passwords.
+9. **Machine-readable help.** With `--output json`, `help` and `--help` print the command tree: flags with type, default and the fixed values from completion, examples and the exit codes. `docs/llms.txt` and `docs/commands` are built from the cobra tree, and tests fail when they are out of date. Every command has examples.
 
 ## Technical choices
 

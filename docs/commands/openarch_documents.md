@@ -13,6 +13,13 @@ With --output json, a document is the server response as is.
 openarch documents [flags]
 ```
 
+### Examples
+
+```
+  openarch documents get /
+  openarch documents create --parent / --type SysFolder --name projects
+```
+
 ### Options
 
 ```
