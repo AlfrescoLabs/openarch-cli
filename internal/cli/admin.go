@@ -68,13 +68,16 @@ func newDocumentsCmd(app *App) *cobra.Command {
 	var f connFlags
 	cmd := &cobra.Command{
 		Use:   "documents",
-		Short: "Get and create documents",
-		Long: `Get and create documents. A document is given by its id, or by its path
-when the value starts with "/" (the root is "/").
+		Short: "Get, create, list, upload and download documents",
+		Long: `Get, create, list, upload and download documents. A document is given by
+its id, or by its path when the value starts with "/" (the root is "/").
 
 With --output json, a document is the server response as is.`,
 		Example: `  openarch documents get /
-  openarch documents create --parent / --type SysFolder --name projects`,
+  openarch documents list /projects
+  openarch documents create --parent / --type SysFolder --name projects
+  openarch documents upload report.pdf --parent /projects
+  openarch documents content /projects/report.pdf --out report.pdf`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
@@ -98,7 +101,8 @@ With --output json, a document is the server response as is.`,
 			return app.Printer.Print(doc)
 		},
 	})
-	cmd.AddCommand(newDocumentsCreateCmd(app, &f))
+	cmd.AddCommand(newDocumentsCreateCmd(app, &f), newDocumentsListCmd(app, &f),
+		newDocumentsUploadCmd(app, &f), newDocumentsContentCmd(app, &f))
 	return cmd
 }
 

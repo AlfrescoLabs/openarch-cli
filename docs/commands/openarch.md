@@ -45,7 +45,7 @@ openarch [flags]
 * [openarch completion](openarch_completion.md)	 - Generate the autocompletion script for the specified shell
 * [openarch config](openarch_config.md)	 - Manage saved connections (contexts)
 * [openarch doctor](openarch_doctor.md)	 - Check the prerequisites to run OpenArch
-* [openarch documents](openarch_documents.md)	 - Get and create documents
+* [openarch documents](openarch_documents.md)	 - Get, create, list, upload and download documents
 * [openarch down](openarch_down.md)	 - Stop OpenArch and remove its containers, keeping the data
 * [openarch init](openarch_init.md)	 - Create an OpenArch workspace
 * [openarch logs](openarch_logs.md)	 - Show the logs of the services

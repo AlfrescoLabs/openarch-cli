@@ -333,10 +333,17 @@ openarch documents get /                                   # by path: the value 
 openarch documents get dae8e1bb-ef08-44e5-81ae-451d785a3643  # by id
 openarch documents create --parent / --type SysFolder --name projects --title Projects
 openarch documents create --parent /projects --file report.json
+openarch documents list /projects
+openarch documents upload report.pdf --parent /projects
+openarch documents content /projects/report.pdf --out report.pdf
 ```
 
 - Queries use HxQL, a SQL-like language, by default. `--syntax expr` selects the expression syntax.
 - New documents reach the search index after a short delay. `--sync` makes the query wait for it.
+- Full-text queries (`WHERE sys_fulltext = 'word'`) work only on the search index, so do not use `--sync`
+  with them. They find words in the name, title and description, not inside uploaded files: OpenArch
+  stores files but does not extract their text.
+- `documents content` checks the SHA-256 of the download against the digest that OpenArch stored.
 - With `--output json`, documents and query results are the server responses as they are.
 
 ## Smoke test

@@ -1,11 +1,11 @@
 ## openarch documents
 
-Get and create documents
+Get, create, list, upload and download documents
 
 ### Synopsis
 
-Get and create documents. A document is given by its id, or by its path
-when the value starts with "/" (the root is "/").
+Get, create, list, upload and download documents. A document is given by
+its id, or by its path when the value starts with "/" (the root is "/").
 
 With --output json, a document is the server response as is.
 
@@ -17,7 +17,10 @@ openarch documents [flags]
 
 ```
   openarch documents get /
+  openarch documents list /projects
   openarch documents create --parent / --type SysFolder --name projects
+  openarch documents upload report.pdf --parent /projects
+  openarch documents content /projects/report.pdf --out report.pdf
 ```
 
 ### Options
@@ -45,6 +48,9 @@ openarch documents [flags]
 ### SEE ALSO
 
 * [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch documents content](openarch_documents_content.md)	 - Download the file of a document
 * [openarch documents create](openarch_documents_create.md)	 - Create a document under a parent
 * [openarch documents get](openarch_documents_get.md)	 - Show a document
+* [openarch documents list](openarch_documents_list.md)	 - List the documents in a folder
+* [openarch documents upload](openarch_documents_upload.md)	 - Upload a file as a new document
 

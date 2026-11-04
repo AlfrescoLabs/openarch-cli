@@ -55,7 +55,7 @@ func TestMCPListTools(t *testing.T) {
 	for _, tool := range res.Tools {
 		byName[tool.Name] = tool
 	}
-	if byName["clean"] != nil || byName["init"] == nil || len(byName) != 17 {
+	if byName["clean"] != nil || byName["init"] == nil || len(byName) != 19 {
 		t.Errorf("tools without --allow-destructive: %d, clean=%v", len(byName), byName["clean"] != nil)
 	}
 	if a := byName["status"].Annotations; !a.ReadOnlyHint {

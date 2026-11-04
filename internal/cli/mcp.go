@@ -41,6 +41,8 @@ var mcpTools = []mcpTool{
 		args: []mcpserver.Arg{{Name: "query", Description: "the query, for example SELECT * FROM SysFolder", Required: true}}},
 	{name: "documents_get", title: "Get a document", command: []string{"documents", "get"}, kind: mcpserver.ReadOnly,
 		args: []mcpserver.Arg{{Name: "id_or_path", Description: `document id, or path when it starts with "/" (the root is "/")`, Required: true}}},
+	{name: "documents_list", title: "List the documents in a folder", command: []string{"documents", "list"}, kind: mcpserver.ReadOnly,
+		args: []mcpserver.Arg{{Name: "folder", Description: `folder id, or path starting with "/" (default: the root "/")`}}},
 	{name: "users_list", title: "List the users", command: []string{"users", "list"}, kind: mcpserver.ReadOnly},
 	{name: "config_list", title: "List the saved contexts", command: []string{"config", "list"}, kind: mcpserver.ReadOnly},
 	{name: "config_whoami", title: "Show the connection in use", command: []string{"config", "whoami"}, kind: mcpserver.ReadOnly},
@@ -51,6 +53,8 @@ var mcpTools = []mcpTool{
 	{name: "up", title: "Start the stack", command: []string{"up"}, kind: mcpserver.Write},
 	{name: "smoke_test", title: "Test OpenArch end to end", command: []string{"smoke-test"}, kind: mcpserver.Write},
 	{name: "documents_create", title: "Create a document", command: []string{"documents", "create"}, kind: mcpserver.Write},
+	{name: "documents_upload", title: "Upload a file", command: []string{"documents", "upload"}, kind: mcpserver.Write,
+		args: []mcpserver.Arg{{Name: "file", Description: "path of a local file; a relative path is relative to the folder where the MCP server runs", Required: true}}},
 	{name: "upgrade", title: "Change the OpenArch version", command: []string{"upgrade"}, kind: mcpserver.Write},
 	{name: "backup", title: "Back up the data", command: []string{"backup"}, kind: mcpserver.Write},
 

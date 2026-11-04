@@ -36,6 +36,8 @@ type documentSummary struct {
 	Creator     *struct {
 		Username string `json:"username"`
 	} `json:"sys_creator"`
+	// Blob is set for documents with a file.
+	Blob *Blob `json:"sysfile_blob"`
 }
 
 // MarshalJSON writes the document exactly as OpenArch returned it.

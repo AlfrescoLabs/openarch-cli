@@ -38,5 +38,5 @@ openarch documents get <id-or-path> [flags]
 
 ### SEE ALSO
 
-* [openarch documents](openarch_documents.md)	 - Get and create documents
+* [openarch documents](openarch_documents.md)	 - Get, create, list, upload and download documents
 

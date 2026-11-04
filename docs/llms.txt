@@ -40,9 +40,12 @@ How to call it from a program or an AI agent:
 - [openarch config use](commands/openarch_config_use.md): Select the current context
 - [openarch config whoami](commands/openarch_config_whoami.md): Show which URL and user a command would use, and where they come from
 - [openarch doctor](commands/openarch_doctor.md): Check the prerequisites to run OpenArch
-- [openarch documents](commands/openarch_documents.md): Get and create documents
+- [openarch documents](commands/openarch_documents.md): Get, create, list, upload and download documents
+- [openarch documents content](commands/openarch_documents_content.md): Download the file of a document
 - [openarch documents create](commands/openarch_documents_create.md): Create a document under a parent
 - [openarch documents get](commands/openarch_documents_get.md): Show a document
+- [openarch documents list](commands/openarch_documents_list.md): List the documents in a folder
+- [openarch documents upload](commands/openarch_documents_upload.md): Upload a file as a new document
 - [openarch down](commands/openarch_down.md): Stop OpenArch and remove its containers, keeping the data
 - [openarch init](commands/openarch_init.md): Create an OpenArch workspace
 - [openarch logs](commands/openarch_logs.md): Show the logs of the services
