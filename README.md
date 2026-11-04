@@ -1,42 +1,41 @@
-# openarch-cli
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img alt="OpenArch CLI" src="docs/assets/logo.svg" width="420">
+  </picture>
+</p>
 
-`openarch` is a command line tool to install and run [OpenArch](https://github.com/hyland/OpenArch) with Docker Compose.
+<p align="center">
+  Install and run <a href="https://github.com/hyland/OpenArch">OpenArch</a> with Docker Compose, from one command line tool.
+</p>
+
+<p align="center">
+  <a href="https://github.com/AlfrescoLabs/openarch-cli/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/AlfrescoLabs/openarch-cli/ci.yml?branch=main&label=CI"></a>
+  <a href="https://github.com/AlfrescoLabs/openarch-cli/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/AlfrescoLabs/openarch-cli"></a>
+  <a href="go.mod"><img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/AlfrescoLabs/openarch-cli"></a>
+  <a href="#verify-the-release"><img alt="Signed with Sigstore" src="https://img.shields.io/badge/signed%20with-Sigstore-6E33FF"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/AlfrescoLabs/openarch-cli"></a>
+</p>
+
+<p align="center">
+  <img alt="openarch doctor, init, up and smoke-test in a terminal" src="docs/demo/demo.gif" width="800">
+</p>
+
+# OpenArch CLI
+
+OpenArch CLI (`openarch`) is a command line tool to install and run [OpenArch](https://github.com/hyland/OpenArch) with Docker Compose.
 
 It creates a workspace folder with plain files: `compose.yaml`, `.env`, `.env.local` and a few config files.
 You can read them, and you can run `docker compose` on them without the CLI.
 
-The same commands work for people and for scripts or AI agents:
+## Why OpenArch CLI
 
-- Every question in the interactive mode is also a flag.
-- Every command supports `--output json`.
-- Exit codes are stable.
-
-## Status
-
-The current release is 0.2.1. The commands:
-
-| Command | What it does |
-| --- | --- |
-| `openarch doctor` | Checks Docker, Docker Compose, memory, free ports and access to the image registry |
-| `openarch init` | Creates a workspace with every deployment option |
-| `openarch render` | Writes the workspace files again from `openarch.yaml` |
-| `openarch up` | Starts the stack and waits until it is healthy |
-| `openarch status` | Shows the state of each service and of the OpenArch API |
-| `openarch logs` | Shows the logs of the services |
-| `openarch down` | Stops the stack and keeps the data |
-| `openarch api ping` | Checks that OpenArch answers and that the credentials work |
-| `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
-| `openarch query` | Runs a query and lists the documents found |
-| `openarch documents` | Gets and creates documents |
-| `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
-| `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
-| `openarch upgrade` | Changes the OpenArch version, then checks the result |
-| `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
-| `openarch clean` | Stops the stack and deletes its data |
-| `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
-| `openarch self-update` | Replaces the binary with the latest release, after a signature check |
-| `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
-| `openarch version` | Prints the version |
+- **Plain files.** The workspace is a normal Docker Compose project. You can keep using it without the CLI.
+- **For people and for scripts.** Every question in the interactive mode is also a flag.
+- **For automation and AI agents.** Every command supports `--output json`, and the exit codes are stable.
+- **Secure by default.** Generated passwords, Compose secrets and optional HTTPS. You can turn off each part.
+- **After the install.** Status, logs, users, upgrades, backups, restores and password rotation.
+- **Signed releases.** Checksums are signed with Sigstore, and `openarch self-update` checks the signature.
 
 ## Requirements
 
@@ -64,9 +63,56 @@ scoop install openarch
 Homebrew also installs the shell completions. Update with `brew upgrade openarch` or
 `scoop update openarch`.
 
+Archives, signature checks and builds from source are in [More install options](#more-install-options).
+
+## Quick start
+
+```
+openarch doctor
+openarch init --dir my-openarch
+openarch up --dir my-openarch
+```
+
+For a tour of every feature in a temporary folder, see [docs/walkthrough.md](docs/walkthrough.md).
+
+`up` returns when OpenArch is healthy. OpenArch is then at http://localhost:8080, and the Swagger UI
+is at http://localhost:8080/swagger-ui/index.html. The first start pulls about 2 GB of images, so it
+takes a few minutes.
+
+The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPENARCH_ADMIN_PASSWORD`.
+
+## Commands
+
+The current release is 0.2.1. The commands:
+
+| Command | What it does |
+| --- | --- |
+| `openarch doctor` | Checks Docker, Docker Compose, memory, free ports and access to the image registry |
+| `openarch init` | Creates a workspace with every deployment option |
+| `openarch render` | Writes the workspace files again from `openarch.yaml` |
+| `openarch up` | Starts the stack and waits until it is healthy |
+| `openarch status` | Shows the state of each service and of the OpenArch API |
+| `openarch logs` | Shows the logs of the services |
+| `openarch down` | Stops the stack and keeps the data |
+| `openarch api ping` | Checks that OpenArch answers and that the credentials work |
+| `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
+| `openarch query` | Runs a query and lists the documents found |
+| `openarch documents` | Gets and creates documents |
+| `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
+| `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
+| `openarch upgrade` | Changes the OpenArch version, then checks the result |
+| `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
+| `openarch clean` | Stops the stack and deletes its data |
+| `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
+| `openarch self-update` | Replaces the binary with the latest release, after a signature check |
+| `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
+| `openarch version` | Prints the version |
+
+## More install options
+
 ### Manual install
 
-Or download the archive for your system from the
+Download the archive for your system from the
 [releases page](https://github.com/AlfrescoLabs/openarch-cli/releases): Linux, macOS and Windows, on
 amd64 or arm64. Each archive has the `openarch` binary, the license, this README and the walkthrough.
 
@@ -142,22 +188,6 @@ openarch completion powershell | Out-String | Invoke-Expression
 ```
 
 `openarch completion <shell> --help` shows more options.
-
-## Quick start
-
-```
-openarch doctor
-openarch init --dir my-openarch
-openarch up --dir my-openarch
-```
-
-For a tour of every feature in a temporary folder, see [docs/walkthrough.md](docs/walkthrough.md).
-
-`up` returns when OpenArch is healthy. OpenArch is then at http://localhost:8080, and the Swagger UI
-is at http://localhost:8080/swagger-ui/index.html. The first start pulls about 2 GB of images, so it
-takes a few minutes.
-
-The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPENARCH_ADMIN_PASSWORD`.
 
 ## Create a workspace
 
