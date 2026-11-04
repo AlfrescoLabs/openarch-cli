@@ -29,6 +29,18 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Deploy keys with write access to AlfrescoLabs/homebrew-tap and AlfrescoLabs/scoop-bucket.
-          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-          SCOOP_BUCKET_DEPLOY_KEY: ${{ secrets.SCOOP_BUCKET_DEPLOY_KEY }}
+      # The same check as openarch self-update, on the bundle the release just
+      # signed. A failure here leaves only a draft that nobody should publish.
+      - name: Check the release signature
+        run: go test ./internal/selfupdate -run TestReleaseBundle -v
+        env:
+          OPENARCH_RELEASE_DIR: dist
+          OPENARCH_RELEASE_TAG: ${{ github.ref_name }}
+      # scripts/publish-packages.sh pushes these files to the tap and the bucket.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: |
+            dist/homebrew/Casks/openarch.rb
+            dist/scoop/openarch.json
+          if-no-files-found: error

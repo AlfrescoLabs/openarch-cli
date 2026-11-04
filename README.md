@@ -483,6 +483,16 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
   spec of a running OpenArch (`/v3/api-docs`). CI fails when the generated code is not up to date.
 - The command reference in `docs/commands` is built from the cobra commands. A test fails when it is not up to date.
 
+### Release
+
+1. Push a tag `vX.Y.Z`. The Release workflow builds a draft release, signs `checksums.txt`, checks the
+   signature with the `self-update` code, and keeps the Homebrew cask and the Scoop manifest as the run
+   artifact `packages`.
+2. Review the draft and publish it on GitHub.
+3. Run `scripts/publish-packages.sh vX.Y.Z` to push the cask and the manifest to
+   [homebrew-tap](https://github.com/AlfrescoLabs/homebrew-tap) and
+   [scoop-bucket](https://github.com/AlfrescoLabs/scoop-bucket).
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

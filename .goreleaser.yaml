@@ -43,12 +43,15 @@ sboms:
 
 # Keyless signature of checksums.txt with cosign, from the GitHub Actions OIDC identity.
 # A Sigstore bundle holds the signature, the certificate and the transparency
-# log proof in one file. openarch self-update checks it.
+# log proof in one file. openarch self-update checks it. goreleaser-action puts
+# its own cosign v2 first in PATH, which still writes the legacy bundle format
+# by default, so the standard format is requested explicitly.
 signs:
   - cmd: cosign
     signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
+      - "--new-bundle-format=true"
       - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
@@ -73,19 +76,19 @@ release:
   prerelease: auto
   name_template: "openarch {{ .Version }}"
 
-# The tap and the bucket are shared by AlfrescoLabs tools. The release
-# workflow pushes to them with one deploy key each. The keys are empty in
-# snapshot mode, which writes the files to dist/ and pushes nothing.
+# The tap and the bucket are shared by AlfrescoLabs tools. GoReleaser only
+# writes the cask and the manifest to dist/: GitHub refuses pushes to them from
+# GitHub-hosted runners. The release workflow keeps both files as a run
+# artifact, and scripts/publish-packages.sh pushes them after the release is
+# published.
 homebrew_casks:
   - name: openarch
     repository:
       owner: AlfrescoLabs
       name: homebrew-tap
       branch: main
-      git:
-        url: "git@github.com:AlfrescoLabs/homebrew-tap.git"
-        private_key: '{{ envOrDefault "HOMEBREW_TAP_DEPLOY_KEY" "" }}'
     directory: Casks
+    skip_upload: true
     commit_author:
       name: Angel Borroy
       email: angel.fernandoborroy@hyland.com
@@ -110,9 +113,7 @@ scoops:
       owner: AlfrescoLabs
       name: scoop-bucket
       branch: main
-      git:
-        url: "git@github.com:AlfrescoLabs/scoop-bucket.git"
-        private_key: '{{ envOrDefault "SCOOP_BUCKET_DEPLOY_KEY" "" }}'
+    skip_upload: true
     commit_author:
       name: Angel Borroy
       email: angel.fernandoborroy@hyland.com
