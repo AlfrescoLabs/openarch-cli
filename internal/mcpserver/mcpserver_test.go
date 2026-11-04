@@ -177,3 +177,25 @@ func TestCallError(t *testing.T) {
 		t.Errorf("bad input: %+v, text %q", res, text)
 	}
 }
+
+func TestLimit(t *testing.T) {
+	tool := Tool{Name: "logs", Flags: []Flag{{Name: "tail", Type: "string"}, {Name: "since", Type: "string"}}}
+	small := result(0, []byte(`{"a": 1}`), nil)
+	if got := limit(small, tool, 100); got != small || got.StructuredContent == nil {
+		t.Errorf("a small result changed: %+v", got)
+	}
+	big := result(0, []byte("{\n  \"line\": \"one\",\n  \"line\": \"two\",\n  \"line\": \"three\"\n}"), nil)
+	got := limit(big, tool, 30)
+	text := got.Content[0].(*mcp.TextContent).Text
+	want := "{\n  \"line\": \"one\",\n\n[Result cut: 18 of 55 bytes shown. Use the parameters tail, since for a smaller result.]"
+	if text != want || got.StructuredContent != nil || got.IsError {
+		t.Errorf("cut result = %q, structured %v", text, got.StructuredContent)
+	}
+	if got := limit(big, tool, 0); got != big {
+		t.Error("0 must mean no limit")
+	}
+	if got := limit(result(4, []byte(strings.Repeat("x", 50)), nil), Tool{}, 20); !got.IsError ||
+		!strings.HasSuffix(got.Content[0].(*mcp.TextContent).Text, "bytes shown.]") {
+		t.Errorf("cut error result = %+v", got)
+	}
+}

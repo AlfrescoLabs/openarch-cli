@@ -81,6 +81,9 @@ type Options struct {
 	AllowDestructive bool
 	// Log receives the stderr of every command.
 	Log io.Writer
+	// MaxResultBytes cuts longer results, so that one result cannot fill the
+	// context of a small model. 0 means no limit.
+	MaxResultBytes int
 }
 
 // New returns a server with the tools of opts.
@@ -306,7 +309,7 @@ func handler(opts Options, t Tool, mu *sync.Mutex) mcp.ToolHandler {
 		prog := &progressWriter{ctx: ctx, req: req, log: opts.Log}
 		code, stdout := opts.Run(ctx, full, prog)
 		prog.flush()
-		return result(code, stdout, prog.tail()), nil
+		return limit(result(code, stdout, prog.tail()), t, opts.MaxResultBytes), nil
 	}
 }
 
@@ -328,6 +331,36 @@ func result(code int, stdout []byte, stderrTail []string) *mcp.CallToolResult {
 		msg += "\n\nLast lines of stderr:\n" + strings.Join(stderrTail, "\n")
 	}
 	return errorResult(msg)
+}
+
+// limitParams are the parameters that make a result smaller.
+var limitParams = []string{"tail", "since", "limit", "offset"}
+
+// limit cuts the text of res to max bytes, at the last line break when there
+// is one. A cut result loses its structured content, because cut JSON is not
+// valid JSON.
+func limit(res *mcp.CallToolResult, t Tool, max int) *mcp.CallToolResult {
+	tc, ok := res.Content[0].(*mcp.TextContent)
+	if max <= 0 || !ok || len(tc.Text) <= max {
+		return res
+	}
+	cut := tc.Text[:max]
+	if i := strings.LastIndexByte(cut, '\n'); i > 0 {
+		cut = cut[:i]
+	}
+	cut = strings.ToValidUTF8(cut, "")
+	note := fmt.Sprintf("\n\n[Result cut: %d of %d bytes shown.", len(cut), len(tc.Text))
+	var params []string
+	for _, f := range t.Flags {
+		if slices.Contains(limitParams, f.Name) {
+			params = append(params, f.Name)
+		}
+	}
+	if len(params) > 0 {
+		note += " Use the parameters " + strings.Join(params, ", ") + " for a smaller result."
+	}
+	note += "]"
+	return &mcp.CallToolResult{IsError: res.IsError, Content: []mcp.Content{&mcp.TextContent{Text: cut + note}}}
 }
 
 func errorResult(msg string) *mcp.CallToolResult {

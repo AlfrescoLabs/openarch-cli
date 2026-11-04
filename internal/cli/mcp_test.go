@@ -16,7 +16,7 @@ func mcpSession(t *testing.T, app *App, allowDestructive bool) *mcp.ClientSessio
 	t.Helper()
 	ctx := context.Background()
 	st, ct := mcp.NewInMemoryTransports()
-	if _, err := mcpserver.New(app.mcpOptions(newRootCmd(app), allowDestructive)).Connect(ctx, st, nil); err != nil {
+	if _, err := mcpserver.New(app.mcpOptions(newRootCmd(app), allowDestructive, defaultMaxResultBytes)).Connect(ctx, st, nil); err != nil {
 		t.Fatal(err)
 	}
 	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, ct, nil)

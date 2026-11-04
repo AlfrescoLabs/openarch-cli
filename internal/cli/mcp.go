@@ -76,6 +76,7 @@ var mcpHiddenFlags = []string{"url", "user", "password", "password-stdin", "inse
 
 func newMCPCmd(app *App) *cobra.Command {
 	var allowDestructive bool
+	var maxResult int
 	cmd := &cobra.Command{
 		Use:   "mcp",
 		Short: "Run an MCP server that exposes the commands as tools",
@@ -91,21 +92,28 @@ default is the current folder. Tools never take passwords, and no tool
 returns one.
 
 Tools that stop services or delete data (down, clean, restore, secrets
-rotate, users delete, config delete) exist only with --allow-destructive.`,
+rotate, users delete, config delete) exist only with --allow-destructive.
+
+A tool result longer than --max-result-bytes is cut, with a note that names
+the parameters for a smaller result (tail, limit, offset).`,
 		Example: `  openarch mcp --dir my-openarch
   openarch mcp --dir my-openarch --allow-destructive
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return mcpserver.Serve(cmd.Context(), app.mcpOptions(cmd.Root(), allowDestructive))
+			return mcpserver.Serve(cmd.Context(), app.mcpOptions(cmd.Root(), allowDestructive, maxResult))
 		},
 	}
 	cmd.Flags().BoolVar(&allowDestructive, "allow-destructive", false, "add the tools that stop services or delete data")
+	cmd.Flags().IntVar(&maxResult, "max-result-bytes", defaultMaxResultBytes, "cut longer tool results, for models with a small context; 0: no limit")
 	return cmd
 }
 
 // mcpOptions builds the server options from the cobra tree.
-func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool) mcpserver.Options {
+// defaultMaxResultBytes keeps one tool result to about 4000 tokens.
+const defaultMaxResultBytes = 16384
+
+func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool, maxResult int) mcpserver.Options {
 	var prefix []string
 	if a.Opts.Dir != "" {
 		prefix = append(prefix, "--dir", a.Opts.Dir)
@@ -121,6 +129,7 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool) mcpserver.O
 		Run:              a.runInProcess,
 		Prefix:           prefix,
 		AllowDestructive: allowDestructive,
+		MaxResultBytes:   maxResult,
 		Log:              a.Streams.Err,
 	}
 }

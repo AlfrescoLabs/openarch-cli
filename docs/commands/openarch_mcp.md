@@ -18,6 +18,9 @@ returns one.
 Tools that stop services or delete data (down, clean, restore, secrets
 rotate, users delete, config delete) exist only with --allow-destructive.
 
+A tool result longer than --max-result-bytes is cut, with a note that names
+the parameters for a smaller result (tail, limit, offset).
+
 ```
 openarch mcp [flags]
 ```
@@ -33,8 +36,9 @@ openarch mcp [flags]
 ### Options
 
 ```
-      --allow-destructive   add the tools that stop services or delete data
-  -h, --help                help for mcp
+      --allow-destructive      add the tools that stop services or delete data
+  -h, --help                   help for mcp
+      --max-result-bytes int   cut longer tool results, for models with a small context; 0: no limit (default 16384)
 ```
 
 ### Options inherited from parent commands
