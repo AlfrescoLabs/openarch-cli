@@ -11,6 +11,10 @@ The name is the file name unless --name is set. The MIME type comes from the
 file extension, else from the first bytes of the file, unless --mime-type is
 set. OpenArch stores the SHA-256 of the content; 'documents content' checks it.
 
+With --replace, a file document with the same name under the parent gets the
+new content, title and description instead of a second document. Without a
+document of that name, a new one is uploaded.
+
 OpenArch keeps the file but does not extract its text, so words inside the
 file are not found by full-text queries.
 
@@ -24,6 +28,7 @@ openarch documents upload <file> [flags]
   openarch documents upload report.pdf --parent /projects
   openarch documents upload notes.txt --parent / --name 2026-notes.txt --title "Notes 2026"
   openarch documents upload photo.jpg --parent /case --description "Sent by Ana on 2026-09-10"
+  openarch documents upload report.pdf --parent /projects --replace
 ```
 
 ### Options
@@ -34,6 +39,7 @@ openarch documents upload <file> [flags]
       --mime-type string     MIME type of the content (default: from the extension or the content)
       --name string          sys_name (default: the file name)
       --parent string        parent document: id, or path starting with /
+      --replace              put the content into the file document with the same name, if there is one
       --title string         sys_title (default: the name)
 ```
 

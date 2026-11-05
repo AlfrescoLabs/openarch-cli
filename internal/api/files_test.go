@@ -17,15 +17,16 @@ import (
 
 // fakeFiles is an in-memory OpenArch with one SysFile document, "d1", under the root.
 type fakeFiles struct {
-	uploads   map[string][]byte
-	blob      []byte
-	name      string
-	mimeType  string
-	failStep  string // "upload" or "attach": answer 500 at that step
-	corrupt   bool   // serve other bytes than the stored digest
-	deleted   bool
-	lastQuery map[string]any
-	querySync string
+	uploads     map[string][]byte
+	blob        []byte
+	name        string
+	mimeType    string
+	failStep    string // "upload" or "attach": answer 500 at that step
+	corrupt     bool   // serve other bytes than the stored digest
+	deleted     bool
+	lastQuery   map[string]any
+	querySync   string
+	description string
 }
 
 func (f *fakeFiles) doc() []byte {
@@ -62,16 +63,24 @@ func (f *fakeFiles) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var body struct {
-			Blob struct {
+			Blob *struct {
 				UploadID string `json:"uploadId"`
 			} `json:"sysfile_blob"`
+			Description *string `json:"sys_description"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		f.blob = f.uploads[body.Blob.UploadID]
+		if body.Blob != nil {
+			f.blob = f.uploads[body.Blob.UploadID]
+		}
+		if body.Description != nil {
+			f.description = *body.Description
+		}
 		_, _ = w.Write(f.doc())
+	case r.Method == http.MethodGet && r.URL.Path == "/api/documents/path/":
+		_, _ = w.Write([]byte(`{"sys_id":"root","sys_primaryType":"SysRoot","sys_path":"/"}`))
 	case r.Method == http.MethodDelete && r.URL.Path == "/api/documents/d1":
 		f.deleted = true
-	case r.Method == http.MethodGet && (r.URL.Path == "/api/documents/d1" || r.URL.Path == "/api/documents/path/"+f.name):
+	case r.Method == http.MethodGet && f.name != "" && (r.URL.Path == "/api/documents/d1" || r.URL.Path == "/api/documents/path/"+f.name):
 		_, _ = w.Write(f.doc())
 	case r.Method == http.MethodGet && r.URL.Path == "/api/download/d1/sysfile_blob/"+f.name:
 		w.Header().Set("Content-Type", f.mimeType)
@@ -162,5 +171,20 @@ func TestListChildren(t *testing.T) {
 	if f.lastQuery["query"] != "SELECT * FROM SysContent WHERE sys_parentId = 'd1'" || f.querySync != "true" ||
 		f.lastQuery["limit"] != float64(5) || len(res.Documents) != 1 {
 		t.Errorf("query = %v sync=%q, documents %d", f.lastQuery, f.querySync, len(res.Documents))
+	}
+}
+
+func TestReplaceFile(t *testing.T) {
+	f := &fakeFiles{uploads: map[string][]byte{}}
+	c := filesClient(t, f)
+	// No document of that name yet: a new one is uploaded.
+	doc, replaced, err := c.ReplaceFile(context.Background(), "/", "a.txt", "a", "first", "text/plain", strings.NewReader("one"))
+	if err != nil || replaced || doc.ID != "d1" || string(f.blob) != "one" {
+		t.Fatalf("first = %+v, %v, %v, blob %q", doc, replaced, err, f.blob)
+	}
+	// Now it exists: same document, new content and description.
+	doc, replaced, err = c.ReplaceFile(context.Background(), "/", "a.txt", "a", "second", "text/plain", strings.NewReader("two"))
+	if err != nil || !replaced || doc.ID != "d1" || string(f.blob) != "two" || f.description != "second" {
+		t.Errorf("second = %+v, %v, %v, blob %q, description %q", doc, replaced, err, f.blob, f.description)
 	}
 }

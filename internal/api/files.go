@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,6 +49,36 @@ func (c *Client) UploadFile(ctx context.Context, parent, name, title, descriptio
 		return Document{}, err
 	}
 	return attached, nil
+}
+
+// ReplaceFile puts content into the SysFile document named name under parent,
+// and sets its title and description. When there is no such document, it
+// uploads a new one. It reports whether a document was replaced.
+func (c *Client) ReplaceFile(ctx context.Context, parent, name, title, description, mimeType string, content io.Reader) (Document, bool, error) {
+	p, err := c.GetDocument(ctx, parent)
+	if err != nil {
+		return Document{}, false, err
+	}
+	old, err := c.GetDocument(ctx, strings.TrimSuffix(p.Path, "/")+"/"+name)
+	if errors.Is(err, ErrNotFound) {
+		doc, err := c.UploadFile(ctx, parent, name, title, description, mimeType, content)
+		return doc, false, err
+	}
+	if err != nil {
+		return Document{}, false, err
+	}
+	if old.PrimaryType != "SysFile" {
+		return Document{}, false, output.NewError(output.ExitUsage, fmt.Sprintf("%s is a %s, not a file", old.Path, old.PrimaryType), "")
+	}
+	if _, err := c.attach(ctx, old.ID, name, mimeType, content); err != nil {
+		return Document{}, false, err
+	}
+	props, err := json.Marshal(map[string]string{"sys_title": title, "sys_description": description})
+	if err != nil {
+		return Document{}, false, err
+	}
+	doc, err := c.UpdateDocument(ctx, old.ID, props)
+	return doc, true, err
 }
 
 func (c *Client) attach(ctx context.Context, id, name, mimeType string, content io.Reader) (Document, error) {
