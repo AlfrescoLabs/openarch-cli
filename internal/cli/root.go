@@ -90,7 +90,7 @@ func (a *App) setup() error {
 
 // noSchemaWarning are the commands that do not read a workspace, and migrate,
 // which reports the version itself.
-var noSchemaWarning = []string{"migrate", "version", "completion", "skill", "help", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd}
+var noSchemaWarning = []string{"migrate", "version", "completion", "skill", "plugin", "help", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd}
 
 // warnOldSchema warns when the openarch.yaml of the workspace has an older
 // schemaVersion. Commands still read it, migrated in memory.
@@ -121,6 +121,9 @@ func Execute(ctx context.Context, args []string, s Streams) int {
 func execute(ctx context.Context, app *App, args []string) int {
 	s := app.Streams
 	root := newRootCmd(app)
+	if code, ok := runPlugin(ctx, app, root, args); ok {
+		return code
+	}
 	root.SetArgs(args)
 	err := root.ExecuteContext(ctx)
 	if err == nil {
@@ -181,7 +184,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 
 	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
 		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newCleanCmd(app), newAPICmd(app), newConfigCmd(app),
-		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newMigrateCmd(app), newMCPCmd(app), newSkillCmd(app), newSelfUpdateCmd(app), newVersionCmd(app))
+		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newMigrateCmd(app), newMCPCmd(app), newSkillCmd(app), newPluginCmd(app), newSelfUpdateCmd(app), newVersionCmd(app))
 	addCompletion(app, root)
 	setJSONHelp(app, root)
 	return root

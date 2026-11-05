@@ -1,0 +1,57 @@
+# Plugins are shell scripts here, so the test needs a Unix shell.
+[windows] skip
+chmod 0755 bin/openarch-hello
+chmod 0755 bin/openarch-fail
+chmod 0755 bin/openarch-version
+env PATH=$WORK/bin${:}$PATH
+
+# A plugin gets the arguments after its name, as they are.
+exec openarch hello a --output json -x
+stdout '^args: a --output json -x$'
+stdout '^bin: .+'
+
+# Global flags before the name become environment variables.
+exec openarch --output json --dir ws --context dev --non-interactive -v --no-color hello
+stdout '^output: json$'
+stdout '^workspace: .+ws$'
+stdout '^context: dev$'
+stdout '^flags: 1 1 1$'
+
+# The exit code of the plugin passes through.
+! exec openarch fail
+stderr 'plugin failed'
+exec sh -c 'openarch fail; echo code=$?'
+stdout 'code=7'
+
+# Built-in commands win over plugins.
+exec openarch version
+stdout '^openarch '
+! stdout 'plugin'
+
+# plugin list shows all of them and marks the shadowed one.
+exec openarch plugin list --output json
+stdout '"name": "fail"'
+stdout '"name": "hello"'
+stdout '"shadowed": true'
+exec openarch plugin list
+stdout 'ignored: built-in command'
+
+# An unknown name with no plugin is still a usage error.
+! exec openarch nosuch
+stderr 'unknown command "nosuch"'
+
+-- bin/openarch-hello --
+#!/bin/sh
+echo "args: $*"
+echo "bin: $OPENARCH_BIN"
+echo "output: $OPENARCH_OUTPUT"
+echo "workspace: $OPENARCH_WORKSPACE"
+echo "context: $OPENARCH_CONTEXT"
+echo "flags: $OPENARCH_NON_INTERACTIVE $OPENARCH_VERBOSE $NO_COLOR"
+-- bin/openarch-fail --
+#!/bin/sh
+echo "plugin failed" >&2
+exit 7
+-- bin/openarch-version --
+#!/bin/sh
+echo "plugin version"

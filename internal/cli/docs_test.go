@@ -109,6 +109,7 @@ How to call it from a program or an AI agent:
 - Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
 - For MCP clients, 'openarch mcp --dir <folder>' runs an MCP server on stdio with the same commands as tools. Add --allow-destructive for down, clean, restore and the other tools that delete data.
 - For coding agents that read Agent Skills, 'openarch skill install' writes .claude/skills/openarch/SKILL.md with the install flow and the fixes for common failures.
+- Plugins: 'openarch <name>' runs an executable named openarch-<name> from PATH. 'openarch plugin list' shows them.
 
 ## Exit codes
 

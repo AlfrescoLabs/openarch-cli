@@ -89,6 +89,7 @@ Follow the `hint` before you try anything else.
 | Back up, restore | `openarch backup`, `openarch restore <folder> --yes` |
 | Delete all the data | `openarch clean --yes` |
 | Check the API and the credentials | `openarch api ping` |
+| Plugins (`openarch-<name>` on PATH) | `openarch plugin list` |
 
 ## Documents
 
