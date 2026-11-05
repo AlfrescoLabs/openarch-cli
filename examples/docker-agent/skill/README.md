@@ -41,7 +41,8 @@ is 0 only when the smoke test passes.
   or `&&`.
 - `run.sh` sets `OPENARCH_CONFIG_DIR` to a temp folder, so the agent never touches your saved contexts or
   the OS credential store.
-- The script does not trust the report of the agent. It runs its own smoke test on the workspace.
+- The script does not trust the report of the agent. It runs its own smoke test on the workspace,
+  and fails when the agent turned off a secure default that the task did not mention.
 
 ## Which models work
 

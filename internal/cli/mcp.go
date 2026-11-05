@@ -145,8 +145,9 @@ const mcpToolUse = "Every fact must come from a tool call. Call one tool, wait f
 	"then decide the next step. Never write a tool result yourself."
 
 // mcpSecureDefaults keeps agents from turning security off on their own.
-const mcpSecureDefaults = "Keep the defaults: they are secure. Use default-users, insecure-backends, " +
-	"bind-ip 0.0.0.0, expose or the tls options only when the user asks for them."
+const mcpSecureDefaults = "Keep the defaults: they are secure. Leave out default-users, insecure-backends, " +
+	"bind-ip, expose and the tls options unless the user names that option. " +
+	"Words such as local, development or test are not a reason to change them."
 
 const mcpInstructions = `These tools install and operate OpenArch with Docker Compose, in one workspace folder.
 ` + mcpToolUse + `

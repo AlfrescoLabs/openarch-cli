@@ -40,7 +40,8 @@ check. The exit code is 0 only when the smoke test passes.
 - The instruction asks the model to get every fact from a real tool call. Without it, some models
   answer with invented tool results instead of calling the tools. `openarch mcp` gives the same rule
   to every client in its server instructions.
-- The script does not trust the report of the agent. It runs its own smoke test on the workspace.
+- The script does not trust the report of the agent. It runs its own smoke test on the workspace,
+  and fails when the agent turned off a secure default that the task did not mention.
 
 ## Which models work
 

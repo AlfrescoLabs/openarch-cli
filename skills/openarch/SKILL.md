@@ -20,7 +20,9 @@ Pass `--dir <folder>` to every command, or run it inside the workspace.
   file. Tell the user where the admin password is (`OPENARCH_ADMIN_PASSWORD`
   in `.env.local`) instead of showing it.
 - Keep the secure defaults of `init`. Add `--default-users`,
-  `--insecure-backends` or `--bind-ip 0.0.0.0` only when the user asks for it.
+  `--insecure-backends` or `--bind-ip 0.0.0.0` only when the user names that
+  option. Words such as "local", "development" or "test" are not a reason to
+  turn security off.
 - Ask the user before `down`, `clean`, `restore`, `secrets rotate`,
   `users delete` and `config delete`. `clean` and `restore` delete data.
 - For the flags of a command, run `openarch <command> --help --output json`.
@@ -31,9 +33,10 @@ Pass `--dir <folder>` to every command, or run it inside the workspace.
 1. `openarch doctor --output json`. Each check has a `status` (`ok`, `warn`,
    `fail`, `skip`) and, when it is not ok, a `fix`. Exit code 3 means a check
    failed: show the `fix` to the user and stop. Warnings do not stop the flow.
-2. `openarch init --dir <folder> --non-interactive --output json`. The result
-   has `url`, `adminUser` and `passwordFile`. Add options only when the user
-   asks, for example `--port 9080`, `--tls self-signed` or `--version 1.0.90`.
+2. `openarch init --dir <folder> --non-interactive --output json`, with no
+   other flags. The result has `url`, `adminUser` and `passwordFile`. Add
+   options only when the user asks, for example `--port 9080`,
+   `--tls self-signed` or `--version 1.0.90`.
 3. `openarch up --dir <folder> --output json`. The first start pulls about
    2 GB of images and can take several minutes. Exit code 4 means a service
    did not become healthy: run `status` and `logs`.
