@@ -81,7 +81,7 @@ The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPEN
 
 ## Commands
 
-The current release is 0.2.1. The commands:
+The current release is 0.3.0. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -95,7 +95,7 @@ The current release is 0.2.1. The commands:
 | `openarch api ping` | Checks that OpenArch answers and that the credentials work |
 | `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
 | `openarch query` | Runs a query and lists the documents found |
-| `openarch documents` | Gets and creates documents |
+| `openarch documents` | Gets, creates and lists documents, and uploads and downloads their files |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
 | `openarch upgrade` | Changes the OpenArch version, then checks the result |
@@ -116,7 +116,7 @@ Download the archive for your system from the
 amd64 or arm64. Each archive has the `openarch` binary, the license, this README and the walkthrough.
 
 ```
-VERSION=0.2.1
+VERSION=0.3.0
 OS=linux        # or darwin, windows
 ARCH=amd64      # or arm64
 curl -LO "https://github.com/AlfrescoLabs/openarch-cli/releases/download/v$VERSION/openarch_${VERSION}_${OS}_${ARCH}.tar.gz"
