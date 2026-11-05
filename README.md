@@ -576,6 +576,9 @@ Then ask the agent, for example: "Set up OpenArch for local development in ./ope
 Run `openarch skill install` again after an update to get the skill of the new release. A `SKILL.md`
 that you changed is replaced only with `--force`.
 
+[examples/docker-agent/skill](examples/docker-agent/skill) installs OpenArch with a local agent that has
+only a shell and the skill, and lists the local models that work.
+
 For an agent that does not read skills, add these lines to its instructions file:
 
 ```

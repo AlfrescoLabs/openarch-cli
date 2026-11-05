@@ -16,9 +16,9 @@ Pass `--dir <folder>` to every command, or run it inside the workspace.
 - Every fact you report must come from a command result. Never guess a URL, a
   port, a password or a document id.
 - Never print or ask for a password in an argument. Passwords are in
-  `<workspace>/.env.local`; the CLI reads them by itself. Tell the user where
-  the admin password is (`OPENARCH_ADMIN_PASSWORD` in `.env.local`) instead of
-  showing it.
+  `<workspace>/.env.local`; the CLI reads them by itself. Never read that
+  file. Tell the user where the admin password is (`OPENARCH_ADMIN_PASSWORD`
+  in `.env.local`) instead of showing it.
 - Keep the secure defaults of `init`. Add `--default-users`,
   `--insecure-backends` or `--bind-ip 0.0.0.0` only when the user asks for it.
 - Ask the user before `down`, `clean`, `restore`, `secrets rotate`,

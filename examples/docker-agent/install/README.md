@@ -25,7 +25,7 @@ The model runs next to the OpenArch stack, so plan for about 48 GB of memory wit
 
 ```
 ./run.sh
-MODEL=local/olmo3-7b-instruct:Q4_K_M ./run.sh
+MODEL=glm-4.7-flash:31B ./run.sh
 ./run.sh "Install OpenArch, then show me its status."
 ```
 
@@ -50,3 +50,4 @@ check. The exit code is 0 only when the smoke test passes.
 | --- | --- |
 | `hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M` | Installs with the secure defaults; smoke test passes |
 | `glm-4.7-flash:31B` | Installs; smoke test passes |
+| OLMo 3 7B | Does not work: it writes tool calls as text |

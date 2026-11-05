@@ -1,0 +1,35 @@
+# Docker Agent with a shell and the openarch Agent Skill, and a local model on
+# Docker Model Runner. The instruction has no OpenArch facts: everything the
+# agent knows about OpenArch comes from .claude/skills/openarch/SKILL.md, which
+# run.sh installs with 'openarch skill install'.
+models:
+  local:
+    provider: dmr
+    model: glm-4.7-flash:31B
+
+agents:
+  root:
+    model: local
+    description: Coding assistant
+    instruction: |
+      You are a coding assistant with a shell. Run one command at a time.
+      Every fact must come from a tool call. Never write a tool result yourself.
+      At the end, give a short report: what you did, and the result of each step.
+    skills: true
+    toolsets:
+      - type: shell
+
+# run.sh uses --safety restricted, so every shell command that no rule allows
+# is denied. The agent can run 'openarch ...' and nothing else: no pipes, no
+# redirections and no second command.
+permissions:
+  allow:
+    - "shell:cmd=openarch *"
+  deny:
+    - "shell:cmd=*;*"
+    - "shell:cmd=*&*"
+    - "shell:cmd=*|*"
+    - "shell:cmd=*>*"
+    - "shell:cmd=*<*"
+    - "shell:cmd=*`*"
+    - "shell:cmd=*$(*"
