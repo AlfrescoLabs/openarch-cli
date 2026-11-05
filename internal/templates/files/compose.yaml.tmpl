@@ -43,7 +43,7 @@ services:
 {{- end }}
       NUXEO_MONGODB_DBNAME: {{ .MongoAppDB }}
       NUXEO_URL: {{ quote .Config.URL }}
-{{- if not .Config.DefaultUsers }}
+{{- if not .Config.Security.DefaultUsers }}
       OPENARCH_USERS_FILE: file:/etc/openarch/users.yml
 {{- end }}
       JAVA_OPTIONS: -Daws.crt.libc=musl -Xmx${OPENARCH_HEAP:?set OPENARCH_HEAP in .env}
@@ -58,9 +58,9 @@ services:
       - mongodb_app_uri
       - opensearch_app_password
 {{- end }}
-{{- if or (not .Config.DefaultUsers) .Volume .Bind }}
+{{- if or (not .Config.Security.DefaultUsers) .Volume .Bind }}
     volumes:
-{{- if not .Config.DefaultUsers }}
+{{- if not .Config.Security.DefaultUsers }}
       - ./config/users.yml:/etc/openarch/users.yml:ro
 {{- end }}
 {{- if .Volume }}

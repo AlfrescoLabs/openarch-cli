@@ -56,6 +56,7 @@ var mcpTools = []mcpTool{
 	{name: "documents_upload", title: "Upload a file", command: []string{"documents", "upload"}, kind: mcpserver.Write,
 		args: []mcpserver.Arg{{Name: "file", Description: "path of a local file; a relative path is relative to the folder where the MCP server runs", Required: true}}},
 	{name: "upgrade", title: "Change the OpenArch version", command: []string{"upgrade"}, kind: mcpserver.Write},
+	{name: "migrate", title: "Update openarch.yaml to the current schema", command: []string{"migrate"}, kind: mcpserver.Write},
 	{name: "backup", title: "Back up the data", command: []string{"backup"}, kind: mcpserver.Write},
 
 	{name: "down", title: "Stop the stack", command: []string{"down"}, kind: mcpserver.Destructive},

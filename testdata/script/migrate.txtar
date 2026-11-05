@@ -1,0 +1,61 @@
+env OPENARCH_WORKSPACE=
+
+# A new workspace has the current schema
+exec openarch init --dir ws --memory 4g --non-interactive
+grep '^schemaVersion: 2$' ws/openarch.yaml
+exec openarch migrate --dir ws
+stdout 'already has schemaVersion 2'
+
+# A version 1 file still works, with a warning
+cp v1.yaml ws/openarch.yaml
+exec openarch render --dir ws --dry-run
+stderr 'openarch.yaml has schemaVersion 1. Run .openarch migrate. to update it to 2.'
+exec openarch users list --dir ws
+stdout 'admin'
+stderr 'schemaVersion 1'
+
+# migrate --dry-run shows the change and writes nothing
+exec openarch migrate --dir ws --dry-run
+stdout 'would change from schemaVersion 1 to 2'
+stdout '^\+security:$'
+stdout '^\+  backendAuth: false$'
+stdout '^-insecureBackends: true$'
+! stderr .
+cmp ws/openarch.yaml v1.yaml
+
+# migrate writes the new schema, and the warning is gone
+exec openarch migrate --dir ws --output json
+stdout '"from": 1'
+stdout '"to": 2'
+stdout '"action": "update"'
+grep '^schemaVersion: 2$' ws/openarch.yaml
+grep '^  backendAuth: false$' ws/openarch.yaml
+! grep insecureBackends ws/openarch.yaml
+exec openarch render --dir ws --dry-run
+! stderr 'schemaVersion'
+
+# A file from a newer openarch gives a clear error
+cp v3.yaml ws/openarch.yaml
+! exec openarch render --dir ws
+stderr 'schemaVersion 3, and this openarch supports up to 2'
+stderr 'openarch self-update'
+! exec openarch migrate --dir ws --output json
+stdout '"code": "prerequisite"'
+
+-- v1.yaml --
+schemaVersion: 1
+name: ws
+version: 1.0.90
+storage:
+  mode: volume
+tls:
+  mode: none
+serverName: localhost
+port: 8080
+bindIP: 127.0.0.1
+memory: 4g
+insecureBackends: true
+-- v3.yaml --
+schemaVersion: 3
+name: ws
+somethingNew: true

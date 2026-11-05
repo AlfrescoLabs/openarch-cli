@@ -131,7 +131,7 @@ func Render(in Input) ([]File, error) {
 		Volume: c.Storage.Mode == workspace.StorageVolume,
 		Bind:   c.Storage.Mode == workspace.StorageBind,
 		HostIP: hostIP(c),
-		Secure: !c.InsecureBackends,
+		Secure: c.Security.BackendAuth,
 	}
 	if d.Bind {
 		d.DataDir = filepath.ToSlash(c.Storage.DataDir)
@@ -150,7 +150,7 @@ func Render(in Input) ([]File, error) {
 		{Path: ".gitignore", Mode: 0o644},
 		{Path: "README.md", Mode: 0o644},
 	}
-	if !c.DefaultUsers {
+	if !c.Security.DefaultUsers {
 		if in.AdminHash == "" {
 			return nil, fmt.Errorf("render: the admin password hash is required")
 		}

@@ -85,7 +85,7 @@ func humanSize(n int64) string {
 // mongoAuth writes the root password from the container secret into a
 // mongo tools config file, so it is never a process argument.
 func (w Workspace) mongoAuth() (setup, args, cleanup string) {
-	if w.Config.InsecureBackends {
+	if !w.Config.Security.BackendAuth {
 		return "", "", ""
 	}
 	return `umask 077; printf 'password: %s\n' "$(cat /run/secrets/mongodb_root_password)" > /tmp/openarch-cli.yml || exit 1; `,
@@ -97,7 +97,7 @@ func (w Workspace) mongoAuth() (setup, args, cleanup string) {
 // OpenArch user from the container secret. printf is a shell builtin, so the
 // password is never a process argument.
 func (w Workspace) osCurl() string {
-	if w.Config.InsecureBackends {
+	if !w.Config.Security.BackendAuth {
 		return `os() { curl -fsS "$@"; }; `
 	}
 	return `os() { printf 'user = "openarch:%s"\n' "$(cat /run/secrets/opensearch_app_password)" | curl -fsS -K - "$@"; }; `
@@ -133,7 +133,7 @@ func Backup(ctx context.Context, env Env, w Workspace, parent string, progress i
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return BackupResult{}, err
 	}
-	m := Manifest{Format: BackupFormat, Created: now, Workspace: w.Config.Name, OpenArchVersion: w.Config.Version, InsecureBackends: w.Config.InsecureBackends}
+	m := Manifest{Format: BackupFormat, Created: now, Workspace: w.Config.Name, OpenArchVersion: w.Config.Version, InsecureBackends: !w.Config.Security.BackendAuth}
 	r := w.runner(env)
 	setup, auth, cleanup := w.mongoAuth()
 	steps := []struct {
@@ -275,7 +275,7 @@ func Restore(ctx context.Context, env Env, w Workspace, dir string, opts UpOptio
 	if err != nil {
 		return RestoreResult{}, err
 	}
-	if m.InsecureBackends != w.Config.InsecureBackends {
+	if m.InsecureBackends != !w.Config.Security.BackendAuth {
 		// Data moves fine between modes; only the access changes.
 		_, _ = fmt.Fprintln(opts.Progress, "Note: the backup comes from a workspace with other backend security settings.")
 	}

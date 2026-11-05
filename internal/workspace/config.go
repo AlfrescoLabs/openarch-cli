@@ -23,7 +23,9 @@ import (
 const ConfigFile = "openarch.yaml"
 
 // SchemaVersion is the version of the openarch.yaml schema written by this CLI.
-const SchemaVersion = 1
+// Every new key or changed key needs a new version and a migration in Parse,
+// so that an older CLI stops with a clear error instead of an unknown key.
+const SchemaVersion = 2
 
 // DefaultVersion is the OpenArch image tag tested with this CLI.
 const DefaultVersion = "1.0.90"
@@ -70,10 +72,23 @@ type Config struct {
 	Expose        []string `yaml:"expose,omitempty" json:"expose,omitempty"`
 	With          []string `yaml:"with,omitempty" json:"with,omitempty"`
 	Memory        string   `yaml:"memory" json:"memory"`
-	// InsecureBackends turns off authentication in MongoDB and the OpenSearch security plugin.
-	InsecureBackends bool `yaml:"insecureBackends,omitempty" json:"insecureBackends,omitempty"`
+	Security      Security `yaml:"security" json:"security"`
+}
+
+// Security holds the security features that can be turned off.
+type Security struct {
+	// BackendAuth turns on authentication in MongoDB and the OpenSearch security plugin.
+	BackendAuth bool `yaml:"backendAuth" json:"backendAuth"`
 	// DefaultUsers keeps the users bundled in the OpenArch image (password "password").
-	DefaultUsers bool `yaml:"defaultUsers,omitempty" json:"defaultUsers,omitempty"`
+	DefaultUsers bool `yaml:"defaultUsers" json:"defaultUsers"`
+}
+
+// configV1 is openarch.yaml with schemaVersion 1: the security options were
+// two top-level keys, and both were off when missing.
+type configV1 struct {
+	Config           `yaml:",inline"`
+	InsecureBackends bool `yaml:"insecureBackends,omitempty"`
+	DefaultUsers     bool `yaml:"defaultUsers,omitempty"`
 }
 
 // Storage selects where data is kept.
@@ -112,6 +127,7 @@ func Default(name string) Config {
 		Port:          DefaultPort(TLSNone),
 		BindIP:        "127.0.0.1",
 		Memory:        "auto",
+		Security:      Security{BackendAuth: true},
 	}
 }
 
@@ -273,10 +289,10 @@ func (c Config) Warnings() []string {
 	if ip := net.ParseIP(c.BindIP); ip != nil && !ip.IsLoopback() && !c.TLSEnabled() {
 		w = append(w, "OpenArch listens on "+c.BindIP+" without TLS. Passwords are sent in clear text (HTTP Basic auth). Use --tls self-signed or --tls custom.")
 	}
-	if c.DefaultUsers {
+	if c.Security.DefaultUsers {
 		w = append(w, "OpenArch uses the users bundled in its image (admin, testuser and others), all with the password \"password\".")
 	}
-	if c.InsecureBackends {
+	if !c.Security.BackendAuth {
 		w = append(w, "MongoDB and OpenSearch run with no authentication. Any container on the Docker network can read and change the data.")
 		if c.Has(ExposeOpenSearch) {
 			w = append(w, "OpenSearch is published on port 9200 with no authentication. Anyone who can reach the port can read and change the index.")
@@ -288,7 +304,7 @@ func (c Config) Warnings() []string {
 			w = append(w, "OpenSearch Dashboards is published on port 5601 with no authentication.")
 		}
 	}
-	if !c.InsecureBackends && c.Has(ExposeOpenSearch) {
+	if c.Security.BackendAuth && c.Has(ExposeOpenSearch) {
 		w = append(w, "OpenSearch is published on port 9200 over plain HTTP. Its passwords are sent in clear text on that port.")
 	}
 	if c.Storage.Mode == StorageNone {
@@ -309,18 +325,59 @@ func Load(path string) (Config, error) {
 	return Parse(data, path)
 }
 
-// Parse decodes and validates openarch.yaml content. name is used in error messages.
+// FileSchemaVersion returns the schemaVersion of openarch.yaml content, or 0
+// when the key is missing.
+func FileSchemaVersion(data []byte) (int, error) {
+	var head struct {
+		SchemaVersion int `yaml:"schemaVersion"`
+	}
+	err := yaml.Unmarshal(data, &head)
+	return head.SchemaVersion, err
+}
+
+// Parse decodes and validates openarch.yaml content. name is used in error
+// messages. A file with an older schemaVersion is migrated in memory.
 func Parse(data []byte, name string) (Config, error) {
-	var c Config
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(&c); err != nil {
-		return Config{}, output.Usage(fmt.Sprintf("cannot parse %s: %v", name, err), "Fix the file or create it again with 'openarch init --force'.")
+	parseErr := func(err error) error {
+		return output.Usage(fmt.Sprintf("cannot parse %s: %v", name, err), "Fix the file or create it again with 'openarch init --force'.")
+	}
+	version, err := FileSchemaVersion(data)
+	if err != nil {
+		return Config{}, parseErr(err)
+	}
+	if version > SchemaVersion {
+		return Config{}, output.NewError(output.ExitPrerequisite,
+			fmt.Sprintf("%s has schemaVersion %d, and this openarch supports up to %d", name, version, SchemaVersion),
+			"A newer openarch wrote the file. Update with 'openarch self-update'.")
+	}
+	// A key that is missing keeps its secure default.
+	c := Config{Security: Security{BackendAuth: true}}
+	switch version {
+	case 1:
+		v := configV1{Config: c}
+		if err := decodeStrict(data, &v); err != nil {
+			return Config{}, parseErr(err)
+		}
+		c = v.Config
+		c.SchemaVersion = SchemaVersion
+		c.Security = Security{BackendAuth: !v.InsecureBackends, DefaultUsers: v.DefaultUsers}
+	case SchemaVersion:
+		if err := decodeStrict(data, &c); err != nil {
+			return Config{}, parseErr(err)
+		}
+	default:
+		return Config{}, output.Usage(fmt.Sprintf("invalid schemaVersion: %d", version), fmt.Sprintf("This CLI supports schemaVersion 1 to %d.", SchemaVersion))
 	}
 	if err := c.Validate(); err != nil {
 		return Config{}, err
 	}
 	return c, nil
+}
+
+func decodeStrict(data []byte, v any) error {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	return dec.Decode(v)
 }
 
 // Marshal encodes c as openarch.yaml content.

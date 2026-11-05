@@ -182,9 +182,9 @@ func (a *App) usersWorkspace() (string, workspace.Config, users.File, error) {
 	if err != nil {
 		return "", cfg, users.File{}, err
 	}
-	if cfg.DefaultUsers {
-		return "", cfg, users.File{}, output.Usage("this workspace uses the users bundled in the OpenArch image (defaultUsers)",
-			"Set defaultUsers to false in openarch.yaml and run 'openarch render' to manage users.")
+	if cfg.Security.DefaultUsers {
+		return "", cfg, users.File{}, output.Usage("this workspace uses the users bundled in the OpenArch image (security.defaultUsers)",
+			"Set security.defaultUsers to false in openarch.yaml and run 'openarch render' to manage users.")
 	}
 	f, err := users.Load(dir)
 	if err != nil {

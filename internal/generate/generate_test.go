@@ -247,7 +247,7 @@ func TestSecurityOff(t *testing.T) {
 	cfg := workspace.Default("ws")
 	dir, _ := initWorkspace(t, cfg, "")
 
-	cfg.InsecureBackends, cfg.DefaultUsers = true, true
+	cfg.Security = workspace.Security{BackendAuth: false, DefaultUsers: true}
 	if err := os.WriteFile(filepath.Join(dir, workspace.ConfigFile), cfg.Marshal(), 0o644); err != nil {
 		t.Fatal(err)
 	}

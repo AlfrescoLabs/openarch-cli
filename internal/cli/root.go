@@ -8,6 +8,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,6 +21,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/selfupdate"
 	"github.com/AlfrescoLabs/openarch-cli/internal/stack"
 	"github.com/AlfrescoLabs/openarch-cli/internal/term"
+	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
 const envOutput = "OPENARCH_OUTPUT"
@@ -85,6 +88,31 @@ func (a *App) setup() error {
 	return nil
 }
 
+// noSchemaWarning are the commands that do not read a workspace, and migrate,
+// which reports the version itself.
+var noSchemaWarning = []string{"migrate", "version", "completion", "skill", "help", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd}
+
+// warnOldSchema warns when the openarch.yaml of the workspace has an older
+// schemaVersion. Commands still read it, migrated in memory.
+func (a *App) warnOldSchema(cmd *cobra.Command) {
+	for c := cmd; c != nil; c = c.Parent() {
+		if slices.Contains(noSchemaWarning, c.Name()) {
+			return
+		}
+	}
+	dir, err := workspace.Find(a.Opts.Dir)
+	if err != nil {
+		return
+	}
+	data, err := os.ReadFile(filepath.Join(dir, workspace.ConfigFile))
+	if err != nil {
+		return
+	}
+	if v, err := workspace.FileSchemaVersion(data); err == nil && v > 0 && v < workspace.SchemaVersion {
+		a.Printer.Warn(fmt.Sprintf("%s has schemaVersion %d. Run 'openarch migrate' to update it to %d.", workspace.ConfigFile, v, workspace.SchemaVersion))
+	}
+}
+
 // Execute runs the CLI with args and returns the process exit code.
 func Execute(ctx context.Context, args []string, s Streams) int {
 	return execute(ctx, newApp(s), args)
@@ -128,8 +156,12 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
-		PersistentPreRunE: func(*cobra.Command, []string) error {
-			return app.setup()
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := app.setup(); err != nil {
+				return err
+			}
+			app.warnOldSchema(cmd)
+			return nil
 		},
 	}
 	root.SetIn(app.Streams.In)
@@ -149,7 +181,7 @@ Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,
 
 	root.AddCommand(newDoctorCmd(app), newInitCmd(app), newRenderCmd(app),
 		newUpCmd(app), newStatusCmd(app), newLogsCmd(app), newDownCmd(app), newCleanCmd(app), newAPICmd(app), newConfigCmd(app),
-		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newMCPCmd(app), newSkillCmd(app), newSelfUpdateCmd(app), newVersionCmd(app))
+		newQueryCmd(app), newDocumentsCmd(app), newUsersCmd(app), newSmokeTestCmd(app), newUpgradeCmd(app), newBackupCmd(app), newRestoreCmd(app), newSecretsCmd(app), newMigrateCmd(app), newMCPCmd(app), newSkillCmd(app), newSelfUpdateCmd(app), newVersionCmd(app))
 	addCompletion(app, root)
 	setJSONHelp(app, root)
 	return root

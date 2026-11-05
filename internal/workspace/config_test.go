@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,7 @@ func TestValidate(t *testing.T) {
 		change func(*Config)
 		want   string
 	}{
-		{"schema", func(c *Config) { c.SchemaVersion = 2 }, "invalid schemaVersion"},
+		{"schema", func(c *Config) { c.SchemaVersion = 3 }, "invalid schemaVersion"},
 		{"name", func(c *Config) { c.Name = "Bad Name" }, "invalid name"},
 		{"version", func(c *Config) { c.Version = "1.0:x" }, "invalid version"},
 		{"storage", func(c *Config) { c.Storage.Mode = "disk" }, "invalid storage"},
@@ -111,7 +112,7 @@ func TestWarnings(t *testing.T) {
 	if !strings.Contains(w, "without TLS") || !strings.Contains(w, "plain HTTP") || strings.Contains(w, "no authentication") {
 		t.Errorf("Warnings = %q", w)
 	}
-	c.InsecureBackends = true
+	c.Security.BackendAuth = false
 	w = strings.Join(c.Warnings(), "\n")
 	if !strings.Contains(w, "9200 with no authentication") {
 		t.Errorf("Warnings = %q", w)
@@ -150,5 +151,67 @@ func TestLoadMissing(t *testing.T) {
 	_, err := Load(filepath.Join(t.TempDir(), ConfigFile))
 	if output.CodeOf(err) != output.ExitUsage {
 		t.Errorf("Load = %v", err)
+	}
+}
+
+const v1File = `schemaVersion: 1
+name: old
+version: 1.0.90
+storage:
+  mode: volume
+tls:
+  mode: none
+serverName: localhost
+port: 8080
+bindIP: 127.0.0.1
+memory: auto
+`
+
+func TestParseMigratesV1(t *testing.T) {
+	for _, tc := range []struct {
+		extra string
+		want  Security
+	}{
+		{"", Security{BackendAuth: true}},
+		{"insecureBackends: true\ndefaultUsers: true\n", Security{BackendAuth: false, DefaultUsers: true}},
+	} {
+		c, err := Parse([]byte(v1File+tc.extra), "openarch.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.SchemaVersion != SchemaVersion || c.Security != tc.want {
+			t.Errorf("Parse(%q) = schemaVersion %d, security %+v; want %d, %+v", tc.extra, c.SchemaVersion, c.Security, SchemaVersion, tc.want)
+		}
+	}
+	if _, err := Parse([]byte(v1File+"colour: blue\n"), "openarch.yaml"); err == nil || !strings.Contains(err.Error(), "colour") {
+		t.Errorf("Parse of a version 1 file with an unknown key = %v", err)
+	}
+}
+
+func TestParseMissingSecurityKeepsDefaults(t *testing.T) {
+	data := strings.Replace(v1File, "schemaVersion: 1", "schemaVersion: 2", 1)
+	c, err := Parse([]byte(data), "openarch.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Security != (Security{BackendAuth: true}) {
+		t.Errorf("security = %+v, want backend authentication on", c.Security)
+	}
+}
+
+func TestParseNewerSchema(t *testing.T) {
+	data := []byte("schemaVersion: 99\nsomethingNew: true\n")
+	_, err := Parse(data, "openarch.yaml")
+	var oerr *output.Error
+	if !errors.As(err, &oerr) || oerr.Code != output.ExitPrerequisite ||
+		!strings.Contains(oerr.Message, "schemaVersion 99") || !strings.Contains(oerr.Hint, "openarch self-update") {
+		t.Errorf("Parse = %#v", err)
+	}
+}
+
+func TestParseMissingSchema(t *testing.T) {
+	_, err := Parse([]byte("name: x\n"), "openarch.yaml")
+	if output.CodeOf(err) != output.ExitUsage || !strings.Contains(err.Error(), "invalid schemaVersion: 0") {
+		t.Errorf("Parse = %v", err)
 	}
 }

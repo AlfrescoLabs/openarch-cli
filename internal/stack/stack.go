@@ -60,7 +60,7 @@ func Load(dir string) (Workspace, error) {
 	case err == nil:
 		w.Secrets = localenv.Parse(data)
 	case errors.Is(err, os.ErrNotExist):
-		if !cfg.InsecureBackends {
+		if cfg.Security.BackendAuth {
 			return Workspace{}, output.Usage(localenv.File+" not found in "+dir, "Run 'openarch render' to create the missing secrets.")
 		}
 	default:

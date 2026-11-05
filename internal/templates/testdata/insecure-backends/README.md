@@ -22,7 +22,7 @@ All passwords are in `.env.local` (mode 0600, git-ignored). Keep that file priva
 | --- | --- | --- |
 | OpenArch | `admin` | `OPENARCH_ADMIN_PASSWORD` |
 
-`insecureBackends` is on: MongoDB and OpenSearch have no authentication.
+`security.backendAuth` is false: MongoDB and OpenSearch have no authentication.
 
 ## Storage
 

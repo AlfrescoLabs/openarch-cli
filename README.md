@@ -99,6 +99,7 @@ The current release is 0.3.1. The commands:
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
 | `openarch upgrade` | Changes the OpenArch version, then checks the result |
+| `openarch migrate` | Updates `openarch.yaml` to the schema of this release |
 | `openarch backup`, `openarch restore` | Back up and restore MongoDB, the OpenArch files and the OpenSearch indices |
 | `openarch clean` | Stops the stack and deletes its data |
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
@@ -257,6 +258,10 @@ Risky choices print a warning on stderr, for example `--bind-ip 0.0.0.0` without
 
 `render` only touches files that change. When an option no longer needs a file (for example, the proxy
 config after you turn off TLS), `render` deletes it.
+
+After an update of openarch, a workspace made by an older release still works. Commands print a
+warning, and `openarch migrate` updates `openarch.yaml` to the new schema (`--dry-run` shows the
+diff). If a newer openarch wrote the file, run `openarch self-update`.
 
 ## Run OpenArch
 

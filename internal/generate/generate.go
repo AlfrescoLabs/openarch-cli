@@ -141,7 +141,7 @@ func Render(ctx context.Context, env Env, opts RenderOptions) (Result, error) {
 func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets localenv.Env, dryRun, showDiff bool, r *Result) error {
 	// Missing secrets are generated, so render also completes an older .env.local.
 	secrets.Fill(DefaultAdminUser)
-	if cfg.DefaultUsers {
+	if cfg.Security.DefaultUsers {
 		secrets.AdminUser, secrets.AdminPassword = DefaultAdminUser, UpstreamAdminPassword
 	}
 	r.Workspace, r.DryRun, r.Config = dir, dryRun, cfg
@@ -162,7 +162,7 @@ func run(ctx context.Context, env Env, dir string, cfg workspace.Config, secrets
 	r.Sizing = workspace.SizingFor(budget)
 
 	in := templates.Input{Config: cfg, Sizing: r.Sizing, AdminUser: secrets.AdminUser}
-	if !cfg.DefaultUsers {
+	if !cfg.Security.DefaultUsers {
 		if in.Users, err = users.Load(dir); err != nil {
 			return err
 		}

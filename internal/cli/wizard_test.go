@@ -64,7 +64,7 @@ func TestWizardAccessibleRun(t *testing.T) {
 	got := f.cfg
 	if got.Storage.Mode != workspace.StorageBind || got.Storage.DataDir != "/srv/oa" || got.TLS.Mode != workspace.TLSSelfSigned ||
 		got.Port != 8443 || got.BindIP != "127.0.0.1" || !slices.Equal(got.Expose, []string{"debug"}) ||
-		len(got.With) != 0 || got.Memory != "8g" || !got.InsecureBackends || !got.DefaultUsers || got.ServerName != "oa.local" || pw != "" {
+		len(got.With) != 0 || got.Memory != "8g" || got.Security.BackendAuth || !got.Security.DefaultUsers || got.ServerName != "oa.local" || pw != "" {
 		t.Errorf("answers = %+v, password %q\noutput:\n%s", got, pw, out.String())
 	}
 	if strings.Contains(out.String(), "Server name") {

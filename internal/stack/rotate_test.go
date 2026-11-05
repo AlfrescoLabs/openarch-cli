@@ -21,7 +21,7 @@ func TestRotatePlan(t *testing.T) {
 	if err != nil || !slices.Equal(do, RotateTargets) || len(skip) != 0 {
 		t.Errorf("plan = %v, %v, %v", do, skip, err)
 	}
-	cfg.InsecureBackends, cfg.DefaultUsers = true, true
+	cfg.Security = workspace.Security{BackendAuth: false, DefaultUsers: true}
 	do, skip, _ = RotatePlan(Workspace{Config: cfg}, nil)
 	if len(do) != 0 || len(skip) != 4 {
 		t.Errorf("plan with security off = %v, %v", do, skip)

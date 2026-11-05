@@ -83,10 +83,10 @@ func RotatePlan(w Workspace, targets []string) ([]string, []RotateSkip, error) {
 			continue
 		}
 		switch {
-		case t == RotateAdmin && w.Config.DefaultUsers:
+		case t == RotateAdmin && w.Config.Security.DefaultUsers:
 			skip = append(skip, RotateSkip{t, "the workspace uses the users bundled in the OpenArch image"})
-		case t != RotateAdmin && w.Config.InsecureBackends:
-			skip = append(skip, RotateSkip{t, "MongoDB and OpenSearch run with no authentication (insecureBackends)"})
+		case t != RotateAdmin && !w.Config.Security.BackendAuth:
+			skip = append(skip, RotateSkip{t, "MongoDB and OpenSearch run with no authentication (security.backendAuth is false)"})
 		default:
 			do = append(do, t)
 		}

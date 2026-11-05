@@ -50,6 +50,7 @@ openarch [flags]
 * [openarch init](openarch_init.md)	 - Create an OpenArch workspace
 * [openarch logs](openarch_logs.md)	 - Show the logs of the services
 * [openarch mcp](openarch_mcp.md)	 - Run an MCP server that exposes the commands as tools
+* [openarch migrate](openarch_migrate.md)	 - Update openarch.yaml to the schema of this openarch
 * [openarch query](openarch_query.md)	 - Run a query and list the documents found
 * [openarch render](openarch_render.md)	 - Write the workspace files again from openarch.yaml
 * [openarch restore](openarch_restore.md)	 - Replace the data of the workspace with a backup

@@ -23,12 +23,14 @@ var optionFlags = []string{
 }
 
 type initFlags struct {
-	cfg           workspace.Config
-	contextName   string
-	from          string
-	passwordStdin bool
-	force         bool
-	dryRun        bool
+	cfg workspace.Config
+	// insecureBackends is the --insecure-backends flag: the opposite of cfg.Security.BackendAuth.
+	insecureBackends bool
+	contextName      string
+	from             string
+	passwordStdin    bool
+	force            bool
+	dryRun           bool
 }
 
 func newInitCmd(app *App) *cobra.Command {
@@ -118,8 +120,8 @@ prompts that work with screen readers.`,
 	fl.StringSliceVar(&f.cfg.Expose, "expose", nil, "publish an extra port: "+strings.Join(workspace.ExposeOptions, ", ")+" (repeatable)")
 	fl.StringSliceVar(&f.cfg.With, "with", nil, "add a service: "+strings.Join(workspace.WithOptions, ", ")+" (repeatable)")
 	fl.StringVar(&f.cfg.Memory, "memory", def.Memory, "memory for the stack: auto (from docker info) or a size such as 4g")
-	fl.BoolVar(&f.cfg.InsecureBackends, "insecure-backends", false, "run MongoDB and OpenSearch with no authentication")
-	fl.BoolVar(&f.cfg.DefaultUsers, "default-users", false, "keep the users bundled in the OpenArch image (admin:password and others)")
+	fl.BoolVar(&f.insecureBackends, "insecure-backends", false, "run MongoDB and OpenSearch with no authentication")
+	fl.BoolVar(&f.cfg.Security.DefaultUsers, "default-users", false, "keep the users bundled in the OpenArch image (admin:password and others)")
 	fl.StringVar(&f.from, "from", "", "create the workspace from an existing openarch.yaml")
 	fl.BoolVar(&f.passwordStdin, "admin-password-stdin", false, "read the admin password from stdin")
 	fl.BoolVar(&f.force, "force", false, "overwrite an existing workspace (keeps the passwords in .env.local unless a new admin password is given)")
@@ -149,6 +151,7 @@ func (f *initFlags) options(fl *pflag.FlagSet, dir string, stdin io.Reader) (gen
 	} else {
 		cfg := f.cfg
 		cfg.SchemaVersion = workspace.SchemaVersion
+		cfg.Security.BackendAuth = !f.insecureBackends
 		cfg.Name = workspace.ProjectName(filepath.Base(dir))
 		if cfg.Port == 0 {
 			cfg.Port = workspace.DefaultPort(cfg.TLS.Mode)
@@ -169,7 +172,7 @@ func (f *initFlags) options(fl *pflag.FlagSet, dir string, stdin io.Reader) (gen
 		}
 		opts.Config = cfg
 	}
-	if f.passwordStdin && opts.Config.DefaultUsers {
+	if f.passwordStdin && opts.Config.Security.DefaultUsers {
 		return opts, output.Usage("--admin-password-stdin cannot be used with --default-users",
 			"The bundled users all have the password \"password\". Remove one of the two flags.")
 	}

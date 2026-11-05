@@ -60,15 +60,14 @@ func goldenCases() map[string]workspace.Config {
 	cases["tls-custom"] = c
 
 	c = base
-	c.InsecureBackends = true
+	c.Security.BackendAuth = false
 	c.Expose = []string{workspace.ExposeMongoDB, workspace.ExposeOpenSearch}
 	c.With = []string{workspace.WithDashboards}
 	cases["insecure-backends"] = c
 
 	// Every security feature off: plain HTTP, no backend passwords, bundled OpenArch users.
 	c = base
-	c.InsecureBackends = true
-	c.DefaultUsers = true
+	c.Security = workspace.Security{BackendAuth: false, DefaultUsers: true}
 	cases["no-security"] = c
 	return cases
 }
