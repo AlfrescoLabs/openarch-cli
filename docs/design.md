@@ -18,6 +18,7 @@ Every command follows these rules.
 8. **Every security feature is optional.** A user can install everything with plain HTTP and no generated passwords.
 9. **Machine-readable help.** With `--output json`, `help` and `--help` print the command tree: flags with type, default and the fixed values from completion, examples and the exit codes. `docs/llms.txt` and `docs/commands` are built from the cobra tree, and tests fail when they are out of date. Every command has examples.
 10. **MCP server.** `openarch mcp` (stdio only) exposes 25 commands as tools (`internal/cli/mcp.go`, `internal/mcpserver`). A tool runs its cobra command in-process with `--output json --non-interactive`, so tools and commands share all logic and exit codes. The input schema comes from the command flags; connection, password, `--yes` and `--follow` flags are never parameters. Positional arguments go after `--`. Destructive tools are registered only with `--allow-destructive`. Calls of tools that change things run one at a time.
+11. **Agent Skill.** `skills/openarch/SKILL.md` is embedded in the binary (package `skills`). `openarch skill install` writes it to `<dir>/.claude/skills/openarch/SKILL.md` and replaces a changed file only with `--force`; `openarch skill show` prints it. The skill is a short guide (rules, install flow, exit codes, common failures) and points to `--help --output json` for flags, so the details stay in one place.
 
 ## Technical choices
 

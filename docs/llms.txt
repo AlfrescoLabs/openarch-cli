@@ -10,6 +10,7 @@ How to call it from a program or an AI agent:
 - Run 'openarch help --output json' for every command, flag, default value, allowed value and exit code. 'openarch <command> --help --output json' describes one command.
 - Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
 - For MCP clients, 'openarch mcp --dir <folder>' runs an MCP server on stdio with the same commands as tools. Add --allow-destructive for down, clean, restore and the other tools that delete data.
+- For coding agents that read Agent Skills, 'openarch skill install' writes .claude/skills/openarch/SKILL.md with the install flow and the fixes for common failures.
 
 ## Exit codes
 
@@ -56,6 +57,9 @@ How to call it from a program or an AI agent:
 - [openarch secrets](commands/openarch_secrets.md): Manage the passwords of a workspace
 - [openarch secrets rotate](commands/openarch_secrets_rotate.md): Give new passwords to the users of OpenArch, MongoDB and OpenSearch
 - [openarch self-update](commands/openarch_self-update.md): Replace this binary with the latest release
+- [openarch skill](commands/openarch_skill.md): Install the Agent Skill that teaches AI coding agents to use openarch
+- [openarch skill install](commands/openarch_skill_install.md): Write the skill to .claude/skills/openarch/SKILL.md
+- [openarch skill show](commands/openarch_skill_show.md): Print the skill
 - [openarch smoke-test](commands/openarch_smoke-test.md): Check OpenArch end to end: create, read, query and delete a document
 - [openarch status](commands/openarch_status.md): Show the state of each service and of the OpenArch API
 - [openarch up](commands/openarch_up.md): Start OpenArch and wait until it is healthy

@@ -103,6 +103,7 @@ The current release is 0.3.1. The commands:
 | `openarch clean` | Stops the stack and deletes its data |
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
 | `openarch mcp` | Runs an MCP server, so that AI agents can use the commands as tools |
+| `openarch skill` | Installs the Agent Skill that teaches AI coding agents to use the CLI (`install`, `show`) |
 | `openarch self-update` | Replaces the binary with the latest release, after a signature check |
 | `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
 | `openarch version` | Prints the version |
@@ -551,6 +552,37 @@ openarch mcp --dir /path/to/my-openarch
   local model (Docker Agent and Docker Model Runner).
 - A result longer than `--max-result-bytes` (default 16384, about 4000 tokens) is cut, with a note that
   names the parameters for a smaller result. Use `0` for no limit.
+
+## Agent Skill
+
+`openarch skill install` writes an [Agent Skill](https://agentskills.io) to
+`.claude/skills/openarch/SKILL.md`. Claude Code and other coding agents that read skills then know how
+to install and operate OpenArch with the CLI: the install flow, the JSON output, the exit codes and the
+fixes for common failures. The skill is part of the binary, so it matches the commands of the release.
+
+```
+# For one project: run it in the project folder
+openarch skill install
+
+# For every project
+openarch skill install --dir ~
+
+# Print it, for agents that read skills from another folder
+openarch skill show
+```
+
+Then ask the agent, for example: "Set up OpenArch for local development in ./openarch".
+
+Run `openarch skill install` again after an update to get the skill of the new release. A `SKILL.md`
+that you changed is replaced only with `--force`.
+
+For an agent that does not read skills, add these lines to its instructions file:
+
+```
+OpenArch runs locally with the openarch CLI. Use --output json --non-interactive on every command.
+Start with 'openarch doctor', then 'openarch init --dir openarch', then 'openarch up --dir openarch'.
+Run 'openarch help --output json' for every command and exit code. Never put a password in an argument.
+```
 
 ## Development
 

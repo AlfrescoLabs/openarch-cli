@@ -1,0 +1,38 @@
+# show prints the SKILL.md of the binary
+exec openarch skill show
+stdout '^name: openarch$'
+stdout '^# OpenArch with the openarch CLI$'
+! stderr .
+
+exec openarch skill show --output json
+stdout '"name": "openarch"'
+stdout '"content": "---\\nname: openarch'
+
+# install writes the skill under the current folder
+exec openarch skill install
+stdout '^Installed the skill: .*SKILL.md$'
+exists .claude/skills/openarch/SKILL.md
+exec openarch skill show
+cmp stdout .claude/skills/openarch/SKILL.md
+
+# a second install changes nothing
+exec openarch skill install --output json
+stdout '"action": "unchanged"'
+
+# --dir picks another folder
+exec openarch skill install --dir proj --output json
+stdout '"action": "create"'
+exists proj/.claude/skills/openarch/SKILL.md
+
+# a changed file is kept unless --force
+cp edited.md proj/.claude/skills/openarch/SKILL.md
+! exec openarch skill install --dir proj --output json
+stdout '"code": "usage"'
+stdout '"hint": "Use --force to replace it."'
+cmp proj/.claude/skills/openarch/SKILL.md edited.md
+exec openarch skill install --dir proj --force --output json
+stdout '"action": "update"'
+! cmp proj/.claude/skills/openarch/SKILL.md edited.md
+
+-- edited.md --
+my own notes

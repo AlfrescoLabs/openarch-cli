@@ -28,7 +28,7 @@ type mcpTool struct {
 
 // mcpTools is the list of tools. Commands that need a password as input
 // (config set, users add, users set-password) or that change the CLI itself
-// (self-update, completion) are not tools. config get is not a tool, because
+// (self-update, completion, skill) are not tools. config get is not a tool, because
 // it can print secrets.
 var mcpTools = []mcpTool{
 	{name: "doctor", title: "Check the prerequisites", command: []string{"doctor"}, kind: mcpserver.ReadOnly},
