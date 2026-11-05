@@ -102,19 +102,20 @@ With --output json, a document is the server response as is.`,
 		},
 	})
 	cmd.AddCommand(newDocumentsCreateCmd(app, &f), newDocumentsListCmd(app, &f),
-		newDocumentsUploadCmd(app, &f), newDocumentsContentCmd(app, &f))
+		newDocumentsUploadCmd(app, &f), newDocumentsUpdateCmd(app, &f), newDocumentsContentCmd(app, &f))
 	return cmd
 }
 
 func newDocumentsCreateCmd(app *App, f *connFlags) *cobra.Command {
-	var parent, file, typ, name, title string
+	var parent, file, typ, name, title, description string
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a document under a parent",
 		Long: `Create a document under a parent, given by id or path.
 
 The document is a JSON object from --file (use - for stdin), or built from
---type, --name and --title. These flags also change the values of --file.
+--type, --name, --title and --description. These flags also change the values
+of --file.
 sys_primaryType is required, for example SysFolder.`,
 		Example: `  openarch documents create --parent / --type SysFolder --name projects --title Projects
   openarch documents create --parent /projects --file report.json
@@ -140,7 +141,7 @@ sys_primaryType is required, for example SysFolder.`,
 					return output.Usage("--file is not a JSON object: "+err.Error(), "")
 				}
 			}
-			for k, v := range map[string]string{"sys_primaryType": typ, "sys_name": name, "sys_title": title} {
+			for k, v := range map[string]string{"sys_primaryType": typ, "sys_name": name, "sys_title": title, "sys_description": description} {
 				if v != "" {
 					body[k] = v
 				}
@@ -169,6 +170,69 @@ sys_primaryType is required, for example SysFolder.`,
 	fl.StringVar(&typ, "type", "", "sys_primaryType, for example SysFolder")
 	fl.StringVar(&name, "name", "", "sys_name")
 	fl.StringVar(&title, "title", "", "sys_title")
+	fl.StringVar(&description, "description", "", "sys_description")
+	return cmd
+}
+
+func newDocumentsUpdateCmd(app *App, f *connFlags) *cobra.Command {
+	var file, title, description string
+	cmd := &cobra.Command{
+		Use:   "update <id-or-path>",
+		Short: "Change the properties of a document",
+		Long: `Change the properties of a document, given by id or path.
+
+The changes are a JSON object from --file (use - for stdin), or built from
+--title and --description. These flags also change the values of --file.
+Properties that are not in the changes keep their value.`,
+		Example: `  openarch documents update /projects/report.pdf --description "Final version"
+  openarch documents update dae8e1bb-ef08-44e5-81ae-451d785a3643 --title "Report 2026"
+  echo '{"sys_description":"checked"}' | openarch documents update /projects/report.pdf --file -`,
+		Args: exactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			body := map[string]any{}
+			if file != "" {
+				var data []byte
+				var err error
+				if file == "-" {
+					data, err = io.ReadAll(io.LimitReader(app.Streams.In, 64<<20))
+				} else {
+					data, err = os.ReadFile(file)
+				}
+				if err != nil {
+					return output.Usage("cannot read --file: "+err.Error(), "")
+				}
+				if err := json.Unmarshal(data, &body); err != nil {
+					return output.Usage("--file is not a JSON object: "+err.Error(), "")
+				}
+			}
+			if cmd.Flags().Changed("title") {
+				body["sys_title"] = title
+			}
+			if cmd.Flags().Changed("description") {
+				body["sys_description"] = description
+			}
+			if len(body) == 0 {
+				return output.Usage("nothing to change", "Use --title, --description or --file.")
+			}
+			data, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			c, err := app.client(cmd, f)
+			if err != nil {
+				return err
+			}
+			doc, err := c.UpdateDocument(cmd.Context(), args[0], data)
+			if err != nil {
+				return err
+			}
+			return app.Printer.Print(doc)
+		},
+	}
+	fl := cmd.Flags()
+	fl.StringVar(&file, "file", "", "JSON file with the changes, or - for stdin")
+	fl.StringVar(&title, "title", "", "new sys_title")
+	fl.StringVar(&description, "description", "", "new sys_description")
 	return cmd
 }
 

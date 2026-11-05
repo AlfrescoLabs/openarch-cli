@@ -98,6 +98,7 @@ Documents have an id, or a path that starts with `/`. The root is `/`.
 - `openarch documents list /` lists a folder.
 - `openarch documents create --parent / --type SysFolder --name projects` creates a folder.
 - `openarch documents upload <file> --parent /projects` uploads a file.
+- `openarch documents update /projects/<name> --description "..."` changes properties.
 - `openarch documents content /projects/<name> --out <file>` downloads it.
 - `openarch query "SELECT * FROM SysFolder"` runs a query (HxQL).
   `SysContent` matches every document.

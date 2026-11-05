@@ -7,7 +7,8 @@ Create a document under a parent
 Create a document under a parent, given by id or path.
 
 The document is a JSON object from --file (use - for stdin), or built from
---type, --name and --title. These flags also change the values of --file.
+--type, --name, --title and --description. These flags also change the values
+of --file.
 sys_primaryType is required, for example SysFolder.
 
 ```
@@ -25,12 +26,13 @@ openarch documents create [flags]
 ### Options
 
 ```
-      --file string     JSON file with the document, or - for stdin
-  -h, --help            help for create
-      --name string     sys_name
-      --parent string   parent document: id, or path starting with /
-      --title string    sys_title
-      --type string     sys_primaryType, for example SysFolder
+      --description string   sys_description
+      --file string          JSON file with the document, or - for stdin
+  -h, --help                 help for create
+      --name string          sys_name
+      --parent string        parent document: id, or path starting with /
+      --title string         sys_title
+      --type string          sys_primaryType, for example SysFolder
 ```
 
 ### Options inherited from parent commands

@@ -52,5 +52,6 @@ openarch documents [flags]
 * [openarch documents create](openarch_documents_create.md)	 - Create a document under a parent
 * [openarch documents get](openarch_documents_get.md)	 - Show a document
 * [openarch documents list](openarch_documents_list.md)	 - List the documents in a folder
+* [openarch documents update](openarch_documents_update.md)	 - Change the properties of a document
 * [openarch documents upload](openarch_documents_upload.md)	 - Upload a file as a new document
 

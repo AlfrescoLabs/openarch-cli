@@ -57,6 +57,8 @@ var mcpTools = []mcpTool{
 	{name: "up", title: "Start the stack", command: []string{"up"}, kind: mcpserver.Write},
 	{name: "smoke_test", title: "Test OpenArch end to end", command: []string{"smoke-test"}, kind: mcpserver.Write},
 	{name: "documents_create", title: "Create a document", command: []string{"documents", "create"}, kind: mcpserver.Write},
+	{name: "documents_update", title: "Change the properties of a document", command: []string{"documents", "update"}, kind: mcpserver.Write,
+		args: []mcpserver.Arg{{Name: "document", Description: "id, or path starting with /", Required: true}}},
 	{name: "documents_upload", title: "Upload a file", command: []string{"documents", "upload"}, kind: mcpserver.Write,
 		args: []mcpserver.Arg{{Name: "file", Description: "path of a local file; a relative path is relative to the folder where the MCP server runs", Required: true}}},
 	{name: "upgrade", title: "Change the OpenArch version", command: []string{"upgrade"}, kind: mcpserver.Write},

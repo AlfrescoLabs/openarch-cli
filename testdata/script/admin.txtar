@@ -41,6 +41,18 @@ stderr 'no sys_primaryType'
 ! exec openarch documents create --type SysFolder
 stderr '--parent is required'
 
+# documents create and update with sys_description
+exec openarch documents create --parent /projects --type SysFolder --name case --description 'From an email' --output json
+stdout '"sys_description": "From an email"'
+exec openarch documents update /projects/case --description 'Checked' --title Case --output json
+stdout '"sys_description": "Checked"'
+stdout '"sys_title": "Case"'
+stdout '"custom_field": "kept"'
+! exec openarch documents update /projects/case
+stderr 'nothing to change'
+! exec openarch documents update /nope --title x
+stderr 'not found: /nope'
+
 # smoke-test: every step passes, and JSON has the pass/fail list
 exec openarch smoke-test
 stdout '\[pass\] verify-delete'

@@ -113,6 +113,16 @@ func newMockOpenArch() *httptest.Server {
 			case http.MethodDelete:
 				delete(docs, d["sys_path"].(string))
 				w.WriteHeader(http.StatusNoContent)
+			case http.MethodPut:
+				var body map[string]any
+				if json.NewDecoder(r.Body).Decode(&body) != nil {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"status": 400, "message": "bad JSON"})
+					return
+				}
+				for k, v := range body {
+					d[k] = v
+				}
+				writeJSON(w, http.StatusOK, d)
 			default:
 				writeJSON(w, http.StatusOK, d)
 			}
@@ -136,6 +146,9 @@ func create(w http.ResponseWriter, r *http.Request, docs map[string]map[string]a
 	path := strings.TrimSuffix(parent["sys_path"].(string), "/") + "/" + name
 	title, _ := body["sys_title"].(string)
 	d := mockDoc(fmt.Sprintf("22222222-2222-2222-2222-%012d", mockSeq.Add(1)), body["sys_primaryType"].(string), path, title)
+	if desc, ok := body["sys_description"]; ok {
+		d["sys_description"] = desc
+	}
 	docs[path] = d
 	writeJSON(w, http.StatusOK, d)
 }

@@ -28,9 +28,13 @@ type Blob struct {
 // UploadFile creates a SysFile document under parent and attaches content:
 // it creates the document, uploads the content (POST /api/upload), then sets
 // sysfile_blob to the upload. When a later step fails, the new document is
-// deleted again.
-func (c *Client) UploadFile(ctx context.Context, parent, name, title, mimeType string, content io.Reader) (Document, error) {
-	body, err := json.Marshal(map[string]string{"sys_primaryType": "SysFile", "sys_name": name, "sys_title": title})
+// deleted again. An empty description is left out.
+func (c *Client) UploadFile(ctx context.Context, parent, name, title, description, mimeType string, content io.Reader) (Document, error) {
+	props := map[string]string{"sys_primaryType": "SysFile", "sys_name": name, "sys_title": title}
+	if description != "" {
+		props["sys_description"] = description
+	}
+	body, err := json.Marshal(props)
 	if err != nil {
 		return Document{}, err
 	}

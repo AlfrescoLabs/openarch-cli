@@ -23,16 +23,18 @@ openarch documents upload <file> [flags]
 ```
   openarch documents upload report.pdf --parent /projects
   openarch documents upload notes.txt --parent / --name 2026-notes.txt --title "Notes 2026"
+  openarch documents upload photo.jpg --parent /case --description "Sent by Ana on 2026-09-10"
 ```
 
 ### Options
 
 ```
-  -h, --help               help for upload
-      --mime-type string   MIME type of the content (default: from the extension or the content)
-      --name string        sys_name (default: the file name)
-      --parent string      parent document: id, or path starting with /
-      --title string       sys_title (default: the name)
+      --description string   sys_description
+  -h, --help                 help for upload
+      --mime-type string     MIME type of the content (default: from the extension or the content)
+      --name string          sys_name (default: the file name)
+      --parent string        parent document: id, or path starting with /
+      --title string         sys_title (default: the name)
 ```
 
 ### Options inherited from parent commands

@@ -104,7 +104,7 @@ func TestUploadThenDownload(t *testing.T) {
 	f := &fakeFiles{uploads: map[string][]byte{}}
 	c := filesClient(t, f)
 	content := []byte("%PDF-1.4 a quote for a charging point")
-	doc, err := c.UploadFile(context.Background(), "/", "quote.pdf", "Quote", "application/pdf", bytes.NewReader(content))
+	doc, err := c.UploadFile(context.Background(), "/", "quote.pdf", "Quote", "", "application/pdf", bytes.NewReader(content))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestUploadThenDownload(t *testing.T) {
 func TestDownloadChecksDigest(t *testing.T) {
 	f := &fakeFiles{uploads: map[string][]byte{}, corrupt: true}
 	c := filesClient(t, f)
-	if _, err := c.UploadFile(context.Background(), "/", "a.txt", "a", "text/plain", strings.NewReader("abc")); err != nil {
+	if _, err := c.UploadFile(context.Background(), "/", "a.txt", "a", "", "text/plain", strings.NewReader("abc")); err != nil {
 		t.Fatal(err)
 	}
 	_, err := c.Download(context.Background(), "d1", io.Discard)
@@ -138,7 +138,7 @@ func TestUploadFailureDeletesDocument(t *testing.T) {
 	for _, step := range []string{"upload", "attach"} {
 		f := &fakeFiles{uploads: map[string][]byte{}, failStep: step}
 		c := filesClient(t, f)
-		_, err := c.UploadFile(context.Background(), "/", "a.txt", "a", "text/plain", strings.NewReader("abc"))
+		_, err := c.UploadFile(context.Background(), "/", "a.txt", "a", "", "text/plain", strings.NewReader("abc"))
 		if err == nil || !f.deleted {
 			t.Errorf("%s fails: err=%v deleted=%v", step, err, f.deleted)
 		}

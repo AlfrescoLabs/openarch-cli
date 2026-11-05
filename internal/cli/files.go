@@ -16,7 +16,7 @@ import (
 )
 
 func newDocumentsUploadCmd(app *App, f *connFlags) *cobra.Command {
-	var parent, name, title, mimeType string
+	var parent, name, title, description, mimeType string
 	cmd := &cobra.Command{
 		Use:   "upload <file>",
 		Short: "Upload a file as a new document",
@@ -30,7 +30,8 @@ set. OpenArch stores the SHA-256 of the content; 'documents content' checks it.
 OpenArch keeps the file but does not extract its text, so words inside the
 file are not found by full-text queries.`,
 		Example: `  openarch documents upload report.pdf --parent /projects
-  openarch documents upload notes.txt --parent / --name 2026-notes.txt --title "Notes 2026"`,
+  openarch documents upload notes.txt --parent / --name 2026-notes.txt --title "Notes 2026"
+  openarch documents upload photo.jpg --parent /case --description "Sent by Ana on 2026-09-10"`,
 		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if parent == "" {
@@ -59,7 +60,7 @@ file are not found by full-text queries.`,
 			if err != nil {
 				return err
 			}
-			doc, err := c.UploadFile(cmd.Context(), parent, name, title, mimeType, file)
+			doc, err := c.UploadFile(cmd.Context(), parent, name, title, description, mimeType, file)
 			if err != nil {
 				return err
 			}
@@ -70,6 +71,7 @@ file are not found by full-text queries.`,
 	fl.StringVar(&parent, "parent", "", "parent document: id, or path starting with /")
 	fl.StringVar(&name, "name", "", "sys_name (default: the file name)")
 	fl.StringVar(&title, "title", "", "sys_title (default: the name)")
+	fl.StringVar(&description, "description", "", "sys_description")
 	fl.StringVar(&mimeType, "mime-type", "", "MIME type of the content (default: from the extension or the content)")
 	return cmd
 }

@@ -194,6 +194,28 @@ func (c *Client) CreateDocument(ctx context.Context, parent string, body []byte)
 	return parseDocument(data)
 }
 
+// UpdateDocument changes the properties in body (a JSON object) of the
+// document ref, given by id or path. Properties not in body keep their value.
+func (c *Client) UpdateDocument(ctx context.Context, ref string, body []byte) (Document, error) {
+	id := ref
+	if IsPath(ref) {
+		doc, err := c.GetDocument(ctx, ref)
+		if err != nil {
+			return Document{}, err
+		}
+		id = doc.ID
+	}
+	what := "update document " + ref
+	resp, err := c.Gen.UpdateDocumentByIdWithBodyWithResponse(ctx, id, &gen.UpdateDocumentByIdParams{}, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return Document{}, c.Transport(err, what)
+	}
+	if err := c.checkBody(resp.StatusCode(), resp.Body, what); err != nil {
+		return Document{}, err
+	}
+	return parseDocument(resp.Body)
+}
+
 // QueryOptions are the inputs of Query.
 type QueryOptions struct {
 	Query  string

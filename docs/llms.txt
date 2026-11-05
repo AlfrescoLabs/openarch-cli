@@ -47,6 +47,7 @@ How to call it from a program or an AI agent:
 - [openarch documents create](commands/openarch_documents_create.md): Create a document under a parent
 - [openarch documents get](commands/openarch_documents_get.md): Show a document
 - [openarch documents list](commands/openarch_documents_list.md): List the documents in a folder
+- [openarch documents update](commands/openarch_documents_update.md): Change the properties of a document
 - [openarch documents upload](commands/openarch_documents_upload.md): Upload a file as a new document
 - [openarch down](commands/openarch_down.md): Stop OpenArch and remove its containers, keeping the data
 - [openarch init](commands/openarch_init.md): Create an OpenArch workspace
