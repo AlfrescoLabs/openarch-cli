@@ -4,7 +4,7 @@
 models:
   local:
     provider: dmr
-    model: hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M
+    model: glm-4.7-flash:31B
 
 agents:
   root:

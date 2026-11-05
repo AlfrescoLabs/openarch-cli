@@ -7,7 +7,7 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
-model=${MODEL:-hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M}
+model=${MODEL:-glm-4.7-flash:31B}
 task=${1:-"Install OpenArch on this machine and check that it works."}
 openarch=$(command -v "${OPENARCH:-openarch}") || { echo "openarch not found; set OPENARCH to the binary" >&2; exit 3; }
 

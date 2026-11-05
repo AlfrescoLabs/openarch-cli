@@ -54,6 +54,6 @@ The agent passes each command as a string argument of the `shell` tool. A model 
 | Model | Result |
 | --- | --- |
 | `glm-4.7-flash:31B` | Works |
-| OLMo 3 and OLMo 3.1 | Do not work: the string arguments of tool calls arrive broken |
+| OLMo 3 and OLMo 3.1 | Do not work: they write tool calls as text, or the string arguments arrive broken |
 
 To check another model, run `MODEL=<model> ./run.sh`. Only `PASS` counts.

@@ -11,21 +11,19 @@ checks the result itself with `openarch smoke-test`, and always deletes the stac
 - Docker Desktop with Docker Model Runner enabled
 - [Docker Agent](https://github.com/docker/docker-agent) (`docker agent version`)
 - `openarch` on your `PATH`, or `OPENARCH=/path/to/openarch`
-- A local model with tool calls. The default is OLMo 3.1 32B Instruct (about 18 GB):
+- A local model with tool calls. The default is GLM 4.7 Flash (about 16 GB):
 
 ```
-docker model pull hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M
-docker model configure --context-size 32768 hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M
+docker model pull glm-4.7-flash:31B
 ```
 
-The model runs next to the OpenArch stack, so plan for about 48 GB of memory with the 32B model. A
-32k context is enough for this task and keeps the memory use lower than the model default.
+The model runs next to the OpenArch stack, so plan for about 40 GB of memory. Load one model at a time.
 
 ## Run
 
 ```
 ./run.sh
-MODEL=glm-4.7-flash:31B ./run.sh
+MODEL=<another model> ./run.sh
 ./run.sh "Install OpenArch, then show me its status."
 ```
 
@@ -39,15 +37,19 @@ check. The exit code is 0 only when the smoke test passes.
   without `--allow-destructive`.
 - `run.sh` sets `OPENARCH_WORKSPACE` and `OPENARCH_CONFIG_DIR` to a temp folder. The MCP server
   inherits them, so the agent never touches your saved contexts or the OS credential store.
-- The instruction asks the model to get every fact from a real tool call. Without it, OLMo 3.1 32B
-  can answer with invented tool results instead of calling the tools. `openarch mcp` gives the same
-  rule to every client in its server instructions.
+- The instruction asks the model to get every fact from a real tool call. Without it, some models
+  answer with invented tool results instead of calling the tools. `openarch mcp` gives the same rule
+  to every client in its server instructions.
 - The script does not trust the report of the agent. It runs its own smoke test on the workspace.
 
-## Tested models
+## Which models work
+
+A model works when it makes real tool calls, not tool calls written as text in the answer, and
+when it waits for each result before the next step.
 
 | Model | Result |
 | --- | --- |
-| `hf.co/unsloth/Olmo-3.1-32B-Instruct-GGUF:Q4_K_M` | Installs with the secure defaults; smoke test passes |
-| `glm-4.7-flash:31B` | Installs; smoke test passes |
-| OLMo 3 7B | Does not work: it writes tool calls as text |
+| `glm-4.7-flash:31B` | Works |
+| OLMo 3 and OLMo 3.1 | Do not work: they write the tool calls as text |
+
+To check another model, run `MODEL=<model> ./run.sh`. Only `PASS` counts.
