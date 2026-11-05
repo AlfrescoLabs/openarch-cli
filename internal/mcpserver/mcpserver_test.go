@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -147,8 +148,15 @@ func TestCall(t *testing.T) {
 	if want := []string{"--dir", "ws", "--output", "json", "--non-interactive", "up"}; !slices.Equal(gotArgs, want) {
 		t.Errorf("args = %q, want %q", gotArgs, want)
 	}
+	// The client handles notifications on its own goroutine, so they can arrive after the result.
+	deadline := time.Now().Add(5 * time.Second)
 	mu.Lock()
 	defer mu.Unlock()
+	for len(messages) < 2 && time.Now().Before(deadline) {
+		mu.Unlock()
+		time.Sleep(10 * time.Millisecond)
+		mu.Lock()
+	}
 	if !slices.Equal(messages, []string{"pulling images", "starting"}) {
 		t.Errorf("progress = %q", messages)
 	}
