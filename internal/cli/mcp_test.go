@@ -16,7 +16,7 @@ func mcpSession(t *testing.T, app *App, allowDestructive bool) *mcp.ClientSessio
 	t.Helper()
 	ctx := context.Background()
 	st, ct := mcp.NewInMemoryTransports()
-	if _, err := mcpserver.New(app.mcpOptions(newRootCmd(app), allowDestructive, defaultMaxResultBytes)).Connect(ctx, st, nil); err != nil {
+	if _, err := mcpserver.New(app.mcpOptions(newRootCmd(app), allowDestructive, false, defaultMaxResultBytes)).Connect(ctx, st, nil); err != nil {
 		t.Fatal(err)
 	}
 	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, ct, nil)
@@ -28,7 +28,7 @@ func mcpSession(t *testing.T, app *App, allowDestructive bool) *mcp.ClientSessio
 }
 
 func TestMCPToolsMatchCommands(t *testing.T) {
-	tools := buildMCPTools(newRootCmd(newApp(Streams{})))
+	tools := buildMCPTools(newRootCmd(newApp(Streams{})), false)
 	if len(tools) != len(mcpTools) {
 		t.Fatalf("%d tools, want %d", len(tools), len(mcpTools))
 	}
@@ -119,7 +119,7 @@ func TestMCPPositionalArgument(t *testing.T) {
 }
 
 func TestMCPInitKeepsSecureDefaults(t *testing.T) {
-	for _, tool := range buildMCPTools(newRootCmd(newApp(Streams{}))) {
+	for _, tool := range buildMCPTools(newRootCmd(newApp(Streams{})), false) {
 		if tool.Name == "init" && !strings.HasPrefix(tool.Description, mcpSecureDefaults) {
 			t.Errorf("init description = %.80q", tool.Description)
 		}
@@ -129,5 +129,32 @@ func TestMCPInitKeepsSecureDefaults(t *testing.T) {
 	}
 	if !strings.Contains(mcpInstructions, mcpToolUse) {
 		t.Error("the server instructions do not ask to call the tools for every fact")
+	}
+}
+
+func TestMCPInitHidesInsecureOptions(t *testing.T) {
+	flags := func(allowInsecure bool) map[string]bool {
+		m := map[string]bool{}
+		for _, tool := range buildMCPTools(newRootCmd(newApp(Streams{})), allowInsecure) {
+			if tool.Name == "init" {
+				for _, f := range tool.Flags {
+					m[f.Name] = true
+				}
+			}
+		}
+		return m
+	}
+	insecure := []string{"default-users", "insecure-backends", "bind-ip", "expose", "tls", "cert", "key", "from"}
+	safe, all := flags(false), flags(true)
+	if !safe["storage"] || !safe["port"] {
+		t.Errorf("init flags without --allow-insecure = %v, want storage and port", safe)
+	}
+	for _, name := range insecure {
+		if safe[name] {
+			t.Errorf("init takes %s without --allow-insecure", name)
+		}
+		if !all[name] {
+			t.Errorf("init does not take %s with --allow-insecure", name)
+		}
 	}
 }

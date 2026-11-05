@@ -24,6 +24,9 @@ type mcpTool struct {
 	extra    []string
 	// note comes before the command help in the tool description.
 	note string
+	// insecure are the flags that turn a security default off. The tool
+	// accepts them only when the server runs with --allow-insecure.
+	insecure []string
 }
 
 // mcpTools is the list of tools. Commands that need a password as input
@@ -48,7 +51,8 @@ var mcpTools = []mcpTool{
 	{name: "config_whoami", title: "Show the connection in use", command: []string{"config", "whoami"}, kind: mcpserver.ReadOnly},
 	{name: "version", title: "Show the CLI version", command: []string{"version"}, kind: mcpserver.ReadOnly},
 
-	{name: "init", title: "Create a workspace", command: []string{"init"}, kind: mcpserver.Write, note: mcpSecureDefaults},
+	{name: "init", title: "Create a workspace", command: []string{"init"}, kind: mcpserver.Write, note: mcpSecureDefaults,
+		insecure: []string{"default-users", "insecure-backends", "bind-ip", "expose", "tls", "cert", "key", "from"}},
 	{name: "render", title: "Write the workspace files again", command: []string{"render"}, kind: mcpserver.Write},
 	{name: "up", title: "Start the stack", command: []string{"up"}, kind: mcpserver.Write},
 	{name: "smoke_test", title: "Test OpenArch end to end", command: []string{"smoke-test"}, kind: mcpserver.Write},
@@ -80,7 +84,7 @@ var mcpTools = []mcpTool{
 var mcpHiddenFlags = []string{"url", "user", "password", "password-stdin", "insecure", "admin-password-stdin", "yes", "follow"}
 
 func newMCPCmd(app *App) *cobra.Command {
-	var allowDestructive bool
+	var allowDestructive, allowInsecure bool
 	var maxResult int
 	cmd := &cobra.Command{
 		Use:   "mcp",
@@ -99,6 +103,10 @@ returns one.
 Tools that stop services or delete data (down, clean, restore, secrets
 rotate, users delete, config delete) exist only with --allow-destructive.
 
+The init tool always keeps the secure defaults. Its options that can turn
+security off (default-users, insecure-backends, bind-ip, expose, tls, cert,
+key, from) exist only with --allow-insecure.
+
 A tool result longer than --max-result-bytes is cut, with a note that names
 the parameters for a smaller result (tail, limit, offset).`,
 		Example: `  openarch mcp --dir my-openarch
@@ -106,10 +114,11 @@ the parameters for a smaller result (tail, limit, offset).`,
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return mcpserver.Serve(cmd.Context(), app.mcpOptions(cmd.Root(), allowDestructive, maxResult))
+			return mcpserver.Serve(cmd.Context(), app.mcpOptions(cmd.Root(), allowDestructive, allowInsecure, maxResult))
 		},
 	}
 	cmd.Flags().BoolVar(&allowDestructive, "allow-destructive", false, "add the tools that stop services or delete data")
+	cmd.Flags().BoolVar(&allowInsecure, "allow-insecure", false, "let the init tool take the options that turn security off")
 	cmd.Flags().IntVar(&maxResult, "max-result-bytes", defaultMaxResultBytes, "cut longer tool results, for models with a small context; 0: no limit")
 	return cmd
 }
@@ -118,7 +127,7 @@ the parameters for a smaller result (tail, limit, offset).`,
 // defaultMaxResultBytes keeps one tool result to about 4000 tokens.
 const defaultMaxResultBytes = 16384
 
-func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool, maxResult int) mcpserver.Options {
+func (a *App) mcpOptions(root *cobra.Command, allowDestructive, allowInsecure bool, maxResult int) mcpserver.Options {
 	var prefix []string
 	if a.Opts.Dir != "" {
 		prefix = append(prefix, "--dir", a.Opts.Dir)
@@ -130,7 +139,7 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive bool, maxResult i
 		Name:             "openarch",
 		Version:          version.Get().Version,
 		Instructions:     mcpInstructions,
-		Tools:            buildMCPTools(root),
+		Tools:            buildMCPTools(root, allowInsecure),
 		Run:              a.runInProcess,
 		Prefix:           prefix,
 		AllowDestructive: allowDestructive,
@@ -157,7 +166,7 @@ Every result is the JSON output of the matching openarch command. An error resul
 1 error, 2 bad usage, 3 prerequisite missing, 4 service not healthy, 5 remote API error, 6 authentication failed.
 Follow the hint in the error. The admin password is in .env.local in the workspace; no tool returns it.`
 
-func buildMCPTools(root *cobra.Command) []mcpserver.Tool {
+func buildMCPTools(root *cobra.Command, allowInsecure bool) []mcpserver.Tool {
 	var tools []mcpserver.Tool
 	for _, t := range mcpTools {
 		c := mustFind(root, t.command...)
@@ -170,7 +179,7 @@ func buildMCPTools(root *cobra.Command) []mcpserver.Tool {
 		}
 		var flags []mcpserver.Flag
 		for _, f := range helpFlags(c.NonInheritedFlags()) {
-			if slices.Contains(mcpHiddenFlags, f.Name) {
+			if slices.Contains(mcpHiddenFlags, f.Name) || !allowInsecure && slices.Contains(t.insecure, f.Name) {
 				continue
 			}
 			flags = append(flags, mcpserver.Flag{Name: f.Name, Type: f.Type, Default: f.Default, Usage: f.Usage, Values: f.Values})

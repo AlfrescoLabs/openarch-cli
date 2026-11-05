@@ -34,7 +34,8 @@ check. The exit code is 0 only when the smoke test passes.
 
 - `agent.yaml` gives the agent one toolset: `openarch mcp`. It has no shell and no file access, so
   every step goes through the CLI commands. Tools that delete data are off, because the server runs
-  without `--allow-destructive`.
+  without `--allow-destructive`, and the `init` tool cannot turn security off, because it runs without
+  `--allow-insecure`.
 - `run.sh` sets `OPENARCH_WORKSPACE` and `OPENARCH_CONFIG_DIR` to a temp folder. The MCP server
   inherits them, so the agent never touches your saved contexts or the OS credential store.
 - The instruction asks the model to get every fact from a real tool call. Without it, some models

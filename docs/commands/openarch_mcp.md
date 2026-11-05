@@ -18,6 +18,10 @@ returns one.
 Tools that stop services or delete data (down, clean, restore, secrets
 rotate, users delete, config delete) exist only with --allow-destructive.
 
+The init tool always keeps the secure defaults. Its options that can turn
+security off (default-users, insecure-backends, bind-ip, expose, tls, cert,
+key, from) exist only with --allow-insecure.
+
 A tool result longer than --max-result-bytes is cut, with a note that names
 the parameters for a smaller result (tail, limit, offset).
 
@@ -37,6 +41,7 @@ openarch mcp [flags]
 
 ```
       --allow-destructive      add the tools that stop services or delete data
+      --allow-insecure         let the init tool take the options that turn security off
   -h, --help                   help for mcp
       --max-result-bytes int   cut longer tool results, for models with a small context; 0: no limit (default 16384)
 ```

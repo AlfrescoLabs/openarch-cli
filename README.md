@@ -549,6 +549,9 @@ openarch mcp --dir /path/to/my-openarch
 - `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
 - Tools that stop services or delete data (`down`, `clean`, `restore`, `secrets_rotate`, `users_delete`,
   `config_delete`) exist only with `--allow-destructive`.
+- The `init` tool always keeps the secure defaults. Its options that can turn security off
+  (`default-users`, `insecure-backends`, `bind-ip`, `expose`, `tls`, `cert`, `key`, `from`) exist only
+  with `--allow-insecure`.
 - Tools never take a password and never return one. Commands that need a password as input
   (`config set`, `users add`, `users set-password`) are not tools.
 - The tool parameters are the flags of each command. Progress goes to MCP progress notifications, and logs
