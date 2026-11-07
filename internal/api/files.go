@@ -51,17 +51,25 @@ func (c *Client) UploadFile(ctx context.Context, parent, name, title, descriptio
 	return attached, nil
 }
 
-// ReplaceFile puts content into the SysFile document named name under parent,
-// and sets its title and description. When there is no such document, it
-// uploads a new one. It reports whether a document was replaced.
-func (c *Client) ReplaceFile(ctx context.Context, parent, name, title, description, mimeType string, content io.Reader) (Document, bool, error) {
+// ReplaceFile puts content into the SysFile document named name under parent.
+// A nil title or description keeps the value of the document; a new document
+// gets the name as its title. When there is no such document, it uploads a new
+// one. It reports whether a document was replaced.
+func (c *Client) ReplaceFile(ctx context.Context, parent, name string, title, description *string, mimeType string, content io.Reader) (Document, bool, error) {
 	p, err := c.GetDocument(ctx, parent)
 	if err != nil {
 		return Document{}, false, err
 	}
 	old, err := c.GetDocument(ctx, strings.TrimSuffix(p.Path, "/")+"/"+name)
 	if errors.Is(err, ErrNotFound) {
-		doc, err := c.UploadFile(ctx, parent, name, title, description, mimeType, content)
+		t, d := name, ""
+		if title != nil {
+			t = *title
+		}
+		if description != nil {
+			d = *description
+		}
+		doc, err := c.UploadFile(ctx, parent, name, t, d, mimeType, content)
 		return doc, false, err
 	}
 	if err != nil {
@@ -70,14 +78,25 @@ func (c *Client) ReplaceFile(ctx context.Context, parent, name, title, descripti
 	if old.PrimaryType != "SysFile" {
 		return Document{}, false, output.NewError(output.ExitUsage, fmt.Sprintf("%s is a %s, not a file", old.Path, old.PrimaryType), "")
 	}
-	if _, err := c.attach(ctx, old.ID, name, mimeType, content); err != nil {
-		return Document{}, false, err
-	}
-	props, err := json.Marshal(map[string]string{"sys_title": title, "sys_description": description})
+	doc, err := c.attach(ctx, old.ID, name, mimeType, content)
 	if err != nil {
 		return Document{}, false, err
 	}
-	doc, err := c.UpdateDocument(ctx, old.ID, props)
+	props := map[string]string{}
+	if title != nil {
+		props["sys_title"] = *title
+	}
+	if description != nil {
+		props["sys_description"] = *description
+	}
+	if len(props) == 0 {
+		return doc, true, nil
+	}
+	body, err := json.Marshal(props)
+	if err != nil {
+		return Document{}, false, err
+	}
+	doc, err = c.UpdateDocument(ctx, old.ID, body)
 	return doc, true, err
 }
 

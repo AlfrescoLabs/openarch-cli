@@ -30,6 +30,7 @@ type documentSummary struct {
 	PrimaryType string `json:"sys_primaryType"`
 	Name        string `json:"sys_name"`
 	Title       string `json:"sys_title"`
+	Description string `json:"sys_description"`
 	Path        string `json:"sys_path"`
 	Created     string `json:"sys_created"`
 	Modified    string `json:"sys_modified"`
@@ -56,7 +57,7 @@ func (d Document) WriteText(w io.Writer) error {
 	var b strings.Builder
 	row := func(k, v string) {
 		if v != "" {
-			fmt.Fprintf(&b, "%-9s %s\n", k, v)
+			fmt.Fprintf(&b, "%-12s %s\n", k, v)
 		}
 	}
 	row("id", d.ID)
@@ -64,6 +65,7 @@ func (d Document) WriteText(w io.Writer) error {
 	row("path", d.Path)
 	row("name", d.Name)
 	row("title", d.Title)
+	row("description", d.Description)
 	if d.Creator != nil {
 		row("creator", d.Creator.Username)
 	}

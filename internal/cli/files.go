@@ -29,7 +29,8 @@ file extension, else from the first bytes of the file, unless --mime-type is
 set. OpenArch stores the SHA-256 of the content; 'documents content' checks it.
 
 With --replace, a file document with the same name under the parent gets the
-new content, title and description instead of a second document. Without a
+new content instead of a second document, and keeps its id. Its title and
+description change only when --title or --description is given. Without a
 document of that name, a new one is uploaded.
 
 OpenArch keeps the file but does not extract its text, so words inside the
@@ -67,7 +68,15 @@ file are not found by full-text queries.`,
 				return err
 			}
 			if replace {
-				doc, _, err := c.ReplaceFile(cmd.Context(), parent, name, title, description, mimeType, file)
+				// Only the properties given as flags change; the others keep their value.
+				var t, d *string
+				if cmd.Flags().Changed("title") {
+					t = &title
+				}
+				if cmd.Flags().Changed("description") {
+					d = &description
+				}
+				doc, _, err := c.ReplaceFile(cmd.Context(), parent, name, t, d, mimeType, file)
 				if err != nil {
 					return err
 				}

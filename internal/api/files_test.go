@@ -177,14 +177,20 @@ func TestListChildren(t *testing.T) {
 func TestReplaceFile(t *testing.T) {
 	f := &fakeFiles{uploads: map[string][]byte{}}
 	c := filesClient(t, f)
+	ptr := func(s string) *string { return &s }
 	// No document of that name yet: a new one is uploaded.
-	doc, replaced, err := c.ReplaceFile(context.Background(), "/", "a.txt", "a", "first", "text/plain", strings.NewReader("one"))
+	doc, replaced, err := c.ReplaceFile(context.Background(), "/", "a.txt", ptr("a"), ptr("first"), "text/plain", strings.NewReader("one"))
 	if err != nil || replaced || doc.ID != "d1" || string(f.blob) != "one" {
 		t.Fatalf("first = %+v, %v, %v, blob %q", doc, replaced, err, f.blob)
 	}
 	// Now it exists: same document, new content and description.
-	doc, replaced, err = c.ReplaceFile(context.Background(), "/", "a.txt", "a", "second", "text/plain", strings.NewReader("two"))
+	doc, replaced, err = c.ReplaceFile(context.Background(), "/", "a.txt", ptr("a"), ptr("second"), "text/plain", strings.NewReader("two"))
 	if err != nil || !replaced || doc.ID != "d1" || string(f.blob) != "two" || f.description != "second" {
 		t.Errorf("second = %+v, %v, %v, blob %q, description %q", doc, replaced, err, f.blob, f.description)
+	}
+	// Without a description, the content changes and the description stays.
+	_, replaced, err = c.ReplaceFile(context.Background(), "/", "a.txt", nil, nil, "text/plain", strings.NewReader("three"))
+	if err != nil || !replaced || string(f.blob) != "three" || f.description != "second" {
+		t.Errorf("third = %v, %v, blob %q, description %q", replaced, err, f.blob, f.description)
 	}
 }
