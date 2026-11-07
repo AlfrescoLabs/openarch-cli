@@ -16,7 +16,11 @@ OPENARCH_CONTEXT, --non-interactive as OPENARCH_NON_INTERACTIVE=1, --verbose as
 OPENARCH_VERBOSE=1 and --no-color as NO_COLOR=1. OPENARCH_BIN holds the path of
 openarch, so a plugin can run the same binary. openarch reads the first three
 variables too, so commands run by the plugin use the same workspace and context.
-Passwords are never passed: a plugin that needs OpenArch runs openarch.
+Passwords are never passed, and OPENARCH_PASSWORD is removed from the
+environment of the plugin: a plugin that needs OpenArch runs openarch, which
+finds the password in the workspace or the context. A setup with only
+environment variables needs a workspace (--dir) or a context ('openarch config
+set') for plugins.
 
 ### Examples
 

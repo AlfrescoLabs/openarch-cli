@@ -17,6 +17,15 @@ stdout '^workspace: .+ws$'
 stdout '^context: dev$'
 stdout '^flags: 1 1 1$'
 
+# A plugin never sees OPENARCH_PASSWORD; other variables pass.
+env OPENARCH_PASSWORD=secret
+env OPENARCH_USER=alice
+exec openarch hello
+stdout '^password: $'
+stdout '^user: alice$'
+env OPENARCH_PASSWORD=
+env OPENARCH_USER=
+
 # The exit code of the plugin passes through.
 ! exec openarch fail
 stderr 'plugin failed'
@@ -48,6 +57,8 @@ echo "output: $OPENARCH_OUTPUT"
 echo "workspace: $OPENARCH_WORKSPACE"
 echo "context: $OPENARCH_CONTEXT"
 echo "flags: $OPENARCH_NON_INTERACTIVE $OPENARCH_VERBOSE $NO_COLOR"
+echo "password: $OPENARCH_PASSWORD"
+echo "user: $OPENARCH_USER"
 -- bin/openarch-fail --
 #!/bin/sh
 echo "plugin failed" >&2

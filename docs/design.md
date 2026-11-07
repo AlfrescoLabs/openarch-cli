@@ -39,8 +39,8 @@ Every command follows these rules.
 11. **Agent Skill.** `skills/openarch/SKILL.md` is embedded in the binary (package `skills`). `openarch skill install` writes it to `<dir>/.claude/skills/openarch/SKILL.md` and replaces a changed file only with `--force`; `openarch skill show` prints it. The skill is a short guide (rules, install flow, exit codes, common failures) and points to `--help --output json` for flags, so the details stay in one place.
 12. **Plugins.** `openarch <name> ...` runs the executable `openarch-<name>` from `PATH` with the arguments after the name, as git and kubectl do. Built-in commands always win. `openarch plugin list` shows the plugins on `PATH`.
     - A plugin is trusted code. It runs with the rights of the user, and it can run any `openarch` command, `config get --show-secrets` too.
-    - The plugin gets the environment of `openarch`. Global flags before the name are added as environment variables (`OPENARCH_OUTPUT`, `OPENARCH_WORKSPACE`, `OPENARCH_CONTEXT`, `OPENARCH_NON_INTERACTIVE`, `OPENARCH_VERBOSE`, `NO_COLOR`), and `OPENARCH_BIN` is the path of `openarch`. `openarch` adds no passwords of its own.
-    - A plugin that needs OpenArch runs `openarch` (`api`, `documents`, `query`), so it needs no copy of the credentials.
+    - The plugin gets the environment of `openarch`. Global flags before the name are added as environment variables (`OPENARCH_OUTPUT`, `OPENARCH_WORKSPACE`, `OPENARCH_CONTEXT`, `OPENARCH_NON_INTERACTIVE`, `OPENARCH_VERBOSE`, `NO_COLOR`), and `OPENARCH_BIN` is the path of `openarch`. `openarch` adds no passwords of its own, and removes `OPENARCH_PASSWORD`.
+    - A plugin that needs OpenArch runs `openarch` (`api`, `documents`, `query`), so it needs no copy of the credentials. Those commands find the password in the workspace or the context, so a setup with only environment variables needs one of them for plugins.
     - The exit code of the plugin is the exit code of `openarch`. Plugins follow the output contract only by convention.
 
 ## Technical choices
