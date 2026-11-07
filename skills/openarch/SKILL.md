@@ -55,7 +55,7 @@ Pass `--dir <folder>` to every command, or run it inside the workspace.
 | 3 | `prerequisite` | A prerequisite is missing | Show the `fix` or `hint` to the user |
 | 4 | `unhealthy` | A service is not healthy | Run `status`, then `logs <service> --tail 100` |
 | 5 | `remote` | Remote API error | Read `message`; check the id, path or query |
-| 6 | `auth` | Authentication failed | Run `config whoami`; do not try other passwords |
+| 6 | `auth` | Authentication failed, or no permission (HTTP 403) | Run `config whoami`; do not try other passwords. For no permission, the user needs more rights |
 
 An error looks like `{"error": {"code": "usage", "message": "...", "hint": "..."}}`.
 Follow the `hint` before you try anything else.

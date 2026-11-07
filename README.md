@@ -327,8 +327,8 @@ printf '%s' "$PASSWORD" | openarch api ping --url https://openarch.example.com -
   to the published port on this machine, so the server name does not need to resolve.
 - `--insecure` (or `OPENARCH_INSECURE=true`) turns off certificate checks, with a warning each time.
 - `--verbose` logs each request, with the `Authorization` header replaced by `REDACTED`.
-- Exit code 6 means the credentials are missing or wrong. Exit code 5 means the server cannot be reached
-  or returned an error.
+- Exit code 6 means the credentials are missing or wrong, or the user has no permission
+  (HTTP 403). Exit code 5 means the server cannot be reached or returned an error.
 
 ## Documents and queries
 
@@ -529,7 +529,7 @@ examples, plus the exit codes. `openarch <command> --help --output json` describ
 | 3 | A prerequisite is missing (for example, `doctor` found a problem) |
 | 4 | A service is not healthy |
 | 5 | Remote API error |
-| 6 | Authentication failed |
+| 6 | Authentication failed, or no permission |
 
 ## MCP server
 

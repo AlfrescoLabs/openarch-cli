@@ -110,14 +110,20 @@ func (c *Client) URL() string { return c.creds.URL }
 
 // Check maps an HTTP status to a CLI error. 401 and 403 are authentication
 // errors (exit code 6); other non-2xx statuses are remote errors (exit code 5).
+// A 403 means the user is known but has no permission, so its hint is not
+// about the password.
 func (c *Client) Check(status int, what string) error {
 	switch {
 	case status >= 200 && status < 300:
 		return nil
-	case status == http.StatusUnauthorized || status == http.StatusForbidden:
+	case status == http.StatusUnauthorized:
 		return output.NewError(output.ExitAuth,
 			fmt.Sprintf("%s: authentication failed at %s (HTTP %d)", what, c.creds.URL, status),
 			"Credentials used: "+c.creds.Describe()+".")
+	case status == http.StatusForbidden:
+		return output.NewError(output.ExitAuth,
+			fmt.Sprintf("%s: user %s has no permission for this request at %s (HTTP %d)", what, c.creds.User, c.creds.URL, status),
+			"Use a user with the needed rights, such as admin, or ask an administrator to grant them.")
 	default:
 		return output.NewError(output.ExitRemote, fmt.Sprintf("%s: HTTP %d from %s", what, status, c.creds.URL), "")
 	}

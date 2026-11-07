@@ -202,7 +202,7 @@ comes from a flag or an env var, stored credentials are not sent to it.
 - Credential functions return errors. They never call `os.Exit`.
 - Passwords never appear in logs, `--verbose` output or error messages. The HTTP client redacts the `Authorization` header.
 - `--insecure` prints a warning every time it is used.
-- A 401 or 403 gives exit code 6. The hint names the context and endpoint that were used.
+- A 401 or 403 gives exit code 6. For a 401 the hint names the context and endpoint that were used; a 403 says that the user has no permission.
 
 ## Self-update
 

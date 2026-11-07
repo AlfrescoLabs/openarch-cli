@@ -71,7 +71,9 @@ func TestPingErrors(t *testing.T) {
 	}
 	forbidden := httptest.NewServer(fakeOpenArch(http.StatusForbidden))
 	defer forbidden.Close()
-	if _, err := ping(t, creds(forbidden.URL, password), nil); output.CodeOf(err) != output.ExitAuth {
+	_, err := ping(t, creds(forbidden.URL, password), nil)
+	var e *output.Error
+	if output.CodeOf(err) != output.ExitAuth || !errors.As(err, &e) || !strings.Contains(e.Message, "no permission") || strings.Contains(e.Hint, "password") {
 		t.Errorf("403: %v", err)
 	}
 	broken := httptest.NewServer(fakeOpenArch(http.StatusInternalServerError))
