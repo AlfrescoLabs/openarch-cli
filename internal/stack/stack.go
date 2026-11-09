@@ -34,6 +34,8 @@ type Env struct {
 	Doctor  func() doctor.Env
 	// CheckAPI calls the OpenArch health endpoint of a workspace.
 	CheckAPI func(ctx context.Context, dir string, cfg workspace.Config) APICheck
+	// HealthPoll is how often 'up --wait' reads the healthchecks. Zero means 15 s.
+	HealthPoll time.Duration
 }
 
 // SystemEnv returns an Env backed by the real system.
@@ -171,7 +173,13 @@ func Up(ctx context.Context, env Env, w Workspace, opts UpOptions) (Status, erro
 	if opts.Wait {
 		args = append(args, "--wait", "--wait-timeout", strconv.Itoa(int(opts.Timeout.Seconds())))
 	}
-	upErr := r.Run(ctx, opts.Progress, opts.Progress, args...)
+	var upErr error
+	authSvc := ""
+	if opts.Wait {
+		authSvc, upErr = upWatched(ctx, env, r, opts.Progress, args)
+	} else {
+		upErr = r.Run(ctx, opts.Progress, opts.Progress, args...)
+	}
 	if ctx.Err() != nil {
 		return Status{}, ctx.Err()
 	}
@@ -184,6 +192,12 @@ func Up(ctx context.Context, env Env, w Workspace, opts UpOptions) (Status, erro
 	}
 	st.Command = "up"
 	switch {
+	case authSvc != "":
+		return st, output.NewError(output.ExitUnhealthy,
+			fmt.Sprintf("the %s healthcheck failed with HTTP 401 (authentication failed) for %s, so the stack cannot become healthy", authSvc, authLoop),
+			"The container may see an old copy of a config file: after a workspace folder is moved, or made again at the same path, "+
+				"Docker Desktop can keep a file mount tied to the old file. Restart Docker Desktop, or use a new folder. "+
+				"'openarch logs "+authSvc+"' shows the server side.")
 	case upErr != nil && st.State == Stopped:
 		// Nothing started: a problem in the files or with Docker, not a health problem.
 		return st, output.NewError(output.ExitError, "docker compose up failed: "+upErr.Error(), "Read the docker compose output above.")
@@ -193,6 +207,83 @@ func Up(ctx context.Context, env Env, w Workspace, opts UpOptions) (Status, erro
 			"Run 'openarch status' to see each service, and 'openarch logs openarch-app' for details.")
 	}
 	return st, nil
+}
+
+// authLoop is how long a healthcheck must fail with HTTP 401 before 'up' stops waiting.
+const authLoop = time.Minute
+
+// upWatched runs 'docker compose up --wait' and reads the healthchecks while it
+// waits. A service that fails with HTTP 401 for authLoop never becomes healthy,
+// so upWatched stops compose and returns that service.
+func upWatched(ctx context.Context, env Env, r compose.Runner, progress io.Writer, args []string) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- r.Run(ctx, progress, progress, args...) }()
+	poll := env.HealthPoll
+	if poll == 0 {
+		poll = 15 * time.Second
+	}
+	tick := time.NewTicker(poll)
+	defer tick.Stop()
+	for {
+		select {
+		case err := <-done:
+			return "", err
+		case <-tick.C:
+			if svc := authLoopService(ctx, r); svc != "" {
+				cancel()
+				return svc, <-done
+			}
+		}
+	}
+}
+
+// authLoopService returns a service whose healthcheck failed with HTTP 401 in
+// every result of the last authLoop, or "". Errors only mean no answer yet.
+func authLoopService(ctx context.Context, r compose.Runner) string {
+	cs, err := r.Ps(ctx)
+	if err != nil {
+		return ""
+	}
+	var names []string
+	for _, c := range cs {
+		if c.State == "running" && c.Health != "" && c.Health != "healthy" {
+			names = append(names, c.Name)
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	hs, err := r.Health(ctx, names...)
+	if err != nil {
+		return ""
+	}
+	for _, h := range hs {
+		if authLoopIn(h.Log) {
+			return h.Service
+		}
+	}
+	return ""
+}
+
+// authLoopIn reports whether the results of the last authLoop are all HTTP 401
+// failures, and the log goes back at least authLoop.
+func authLoopIn(log []compose.HealthResult) bool {
+	if len(log) == 0 {
+		return false
+	}
+	last := log[len(log)-1].Start
+	for i := len(log) - 1; i >= 0; i-- {
+		res := log[i]
+		if res.ExitCode == 0 || !strings.Contains(res.Output, "returned error: 401") {
+			return false
+		}
+		if last.Sub(res.Start) >= authLoop {
+			return true
+		}
+	}
+	return false
 }
 
 // preflight runs doctor. Ports used by this stack itself are not a problem.

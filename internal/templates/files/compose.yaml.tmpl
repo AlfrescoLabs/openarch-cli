@@ -264,9 +264,10 @@ services:
     healthcheck:
 {{- if .Secure }}
       # printf is a shell builtin, so the password never shows in a process list.
-      test: ["CMD-SHELL", "printf 'user = \"{{ .OpenSearchAppUser }}:%s\"\\n' \"$$(cat /run/secrets/opensearch_app_password)\" | curl -fs -K - 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      # -S writes the HTTP error to the health log, so 'openarch up' can see a wrong password.
+      test: ["CMD-SHELL", "printf 'user = \"{{ .OpenSearchAppUser }}:%s\"\\n' \"$$(cat /run/secrets/opensearch_app_password)\" | curl -fsS -K - 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
 {{- else }}
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
 {{- end }}
       interval: 15s
       timeout: 10s

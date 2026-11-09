@@ -63,3 +63,23 @@ func TestEnvFiles(t *testing.T) {
 		t.Errorf("args = %v", got)
 	}
 }
+
+func TestParseHealth(t *testing.T) {
+	data := []byte(`[
+  {"Config": {"Labels": {"com.docker.compose.service": "opensearch"}},
+   "State": {"Health": {"Status": "starting", "Log": [
+     {"Start": "2026-11-09T10:00:00.123456789Z", "ExitCode": 22, "Output": "curl: (22) The requested URL returned error: 401\n"}]}}},
+  {"Config": {"Labels": {"com.docker.compose.service": "mongodb-init"}}, "State": {}}
+]`)
+	hs, err := ParseHealth(data)
+	if err != nil || len(hs) != 1 {
+		t.Fatalf("ParseHealth = %+v, %v", hs, err)
+	}
+	h := hs[0]
+	if h.Service != "opensearch" || h.Status != "starting" || len(h.Log) != 1 || h.Log[0].ExitCode != 22 || h.Log[0].Start.Minute() != 0 {
+		t.Errorf("health = %+v", h)
+	}
+	if _, err := ParseHealth([]byte("not json")); err == nil {
+		t.Error("ParseHealth accepted bad JSON")
+	}
+}

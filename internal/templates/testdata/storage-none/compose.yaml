@@ -163,7 +163,8 @@ services:
       - ./config/opensearch/roles_mapping.yml:/usr/share/opensearch/config/opensearch-security/roles_mapping.yml:ro
     healthcheck:
       # printf is a shell builtin, so the password never shows in a process list.
-      test: ["CMD-SHELL", "printf 'user = \"openarch:%s\"\\n' \"$$(cat /run/secrets/opensearch_app_password)\" | curl -fs -K - 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      # -S writes the HTTP error to the health log, so 'openarch up' can see a wrong password.
+      test: ["CMD-SHELL", "printf 'user = \"openarch:%s\"\\n' \"$$(cat /run/secrets/opensearch_app_password)\" | curl -fsS -K - 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
       interval: 15s
       timeout: 10s
       retries: 10

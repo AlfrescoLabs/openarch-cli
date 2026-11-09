@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Exec runs a command. Tests replace it with a fake.
@@ -152,4 +153,53 @@ func ParsePs(data []byte) ([]Container, error) {
 		cs = append(cs, c)
 	}
 	return cs, s.Err()
+}
+
+// HealthResult is one run of a container healthcheck.
+type HealthResult struct {
+	Start    time.Time `json:"Start"`
+	ExitCode int       `json:"ExitCode"`
+	Output   string    `json:"Output"`
+}
+
+// Health is the healthcheck state of one container. Docker keeps the last five results.
+type Health struct {
+	Service string
+	Status  string
+	Log     []HealthResult
+}
+
+// Health returns the healthcheck state of the named containers ('docker inspect').
+// Containers with no healthcheck are left out.
+func (r Runner) Health(ctx context.Context, names ...string) ([]Health, error) {
+	var out, errb bytes.Buffer
+	if err := r.Exec(ctx, Command{Args: append([]string{"inspect"}, names...), Env: r.Env, Stdout: &out, Stderr: &errb}); err != nil {
+		return nil, fmt.Errorf("docker inspect: %s", strings.TrimSpace(errb.String()))
+	}
+	return ParseHealth(out.Bytes())
+}
+
+// ParseHealth reads the output of 'docker inspect'.
+func ParseHealth(data []byte) ([]Health, error) {
+	var all []struct {
+		Config struct {
+			Labels map[string]string `json:"Labels"`
+		} `json:"Config"`
+		State struct {
+			Health *struct {
+				Status string         `json:"Status"`
+				Log    []HealthResult `json:"Log"`
+			} `json:"Health"`
+		} `json:"State"`
+	}
+	if err := json.Unmarshal(data, &all); err != nil {
+		return nil, fmt.Errorf("parse docker inspect: %w", err)
+	}
+	var hs []Health
+	for _, c := range all {
+		if h := c.State.Health; h != nil {
+			hs = append(hs, Health{Service: c.Config.Labels["com.docker.compose.service"], Status: h.Status, Log: h.Log})
+		}
+	}
+	return hs, nil
 }

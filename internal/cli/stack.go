@@ -59,7 +59,9 @@ When a config file or a password changed (after 'openarch render'), up
 recreates only the services that read it.
 
 Exit code 3 means a prerequisite failed. Exit code 4 means the stack did not
-become healthy before --timeout; the status of each service is still printed.`,
+become healthy before --timeout; the status of each service is still printed.
+up also stops with exit code 4 when a healthcheck fails with HTTP 401 for one
+minute, because a wrong password never becomes healthy.`,
 		Example: `  openarch up
   openarch up --dir my-openarch --timeout 15m
   openarch up --wait=false

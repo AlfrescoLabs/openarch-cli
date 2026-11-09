@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/AlfrescoLabs/openarch-cli/internal/compose"
 	"github.com/AlfrescoLabs/openarch-cli/internal/doctor"
@@ -93,13 +96,24 @@ func TestParseLogs(t *testing.T) {
 type fakeCompose struct {
 	ps    []compose.Container
 	upErr error
-	calls [][]string
-	envs  [][]string
+	// upBlocks makes up wait until its context is done, like a stack that never becomes healthy.
+	upBlocks bool
+	// inspect is the output of docker inspect.
+	inspect string
+	mu      sync.Mutex
+	calls   [][]string
+	envs    [][]string
 }
 
-func (f *fakeCompose) exec(_ context.Context, c compose.Command) error {
+func (f *fakeCompose) exec(ctx context.Context, c compose.Command) error {
+	f.mu.Lock()
 	f.calls = append(f.calls, c.Args)
 	f.envs = append(f.envs, c.Env)
+	f.mu.Unlock()
+	if c.Args[0] == "inspect" {
+		_, err := io.WriteString(c.Stdout, f.inspect)
+		return err
+	}
 	// The workspace paths are absolute, so the first plain sub-command word is the command.
 	sub := ""
 	for _, a := range c.Args {
@@ -117,6 +131,10 @@ func (f *fakeCompose) exec(_ context.Context, c compose.Command) error {
 			}
 		}
 	case "up":
+		if f.upBlocks {
+			<-ctx.Done()
+			return ctx.Err()
+		}
 		return f.upErr
 	case "logs":
 		_, err := io.WriteString(c.Stdout, "openarch-app-1  | hello\n")
@@ -227,6 +245,51 @@ func TestUpTimeout(t *testing.T) {
 	st, err := Up(context.Background(), env(f, true), w, UpOptions{Wait: true, SkipDoctor: true, Progress: &strings.Builder{}})
 	if output.CodeOf(err) != output.ExitUnhealthy || st.State != Starting {
 		t.Errorf("Up = %s, %v", st.State, err)
+	}
+}
+
+func TestUpStopsOnAuthLoop(t *testing.T) {
+	w := newWorkspace(t, workspace.Default("ws"))
+	cs := healthyContainers()
+	cs[2] = ctr("opensearch", "running", "starting", 0)
+	var log []string
+	for i := range 5 {
+		start := time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC).Add(time.Duration(i) * 15 * time.Second).Format(time.RFC3339)
+		log = append(log, fmt.Sprintf(`{"Start": %q, "ExitCode": 22, "Output": "curl: (22) The requested URL returned error: 401"}`, start))
+	}
+	f := &fakeCompose{ps: cs, upBlocks: true, inspect: `[{"Config": {"Labels": {"com.docker.compose.service": "opensearch"}},
+		"State": {"Health": {"Status": "starting", "Log": [` + strings.Join(log, ",") + `]}}}]`}
+	e := env(f, true)
+	e.HealthPoll = time.Millisecond
+	st, err := Up(context.Background(), e, w, UpOptions{Wait: true, SkipDoctor: true, Timeout: 600e9, Progress: &strings.Builder{}})
+	var oerr *output.Error
+	if !errors.As(err, &oerr) || oerr.Code != output.ExitUnhealthy || !strings.Contains(oerr.Message, "opensearch healthcheck failed with HTTP 401") ||
+		!strings.Contains(oerr.Hint, "Restart Docker Desktop") || st.State != Starting {
+		t.Errorf("Up = %s, %v", st.State, err)
+	}
+}
+
+func TestAuthLoopIn(t *testing.T) {
+	at := func(sec, exit int, out string) compose.HealthResult {
+		return compose.HealthResult{Start: time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC).Add(time.Duration(sec) * time.Second), ExitCode: exit, Output: out}
+	}
+	e401 := "curl: (22) The requested URL returned error: 401"
+	tests := []struct {
+		name string
+		log  []compose.HealthResult
+		want bool
+	}{
+		{"one minute of 401", []compose.HealthResult{at(0, 22, e401), at(15, 22, e401), at(30, 22, e401), at(45, 22, e401), at(60, 22, e401)}, true},
+		{"only 45 s", []compose.HealthResult{at(0, 22, e401), at(15, 22, e401), at(30, 22, e401), at(45, 22, e401)}, false},
+		{"a success in between", []compose.HealthResult{at(0, 22, e401), at(15, 0, "{}"), at(30, 22, e401), at(45, 22, e401), at(60, 22, e401)}, false},
+		{"not running yet", []compose.HealthResult{at(0, 7, "curl: (7) Failed to connect"), at(30, 7, ""), at(60, 7, "")}, false},
+		{"server error", []compose.HealthResult{at(0, 22, "returned error: 503"), at(60, 22, "returned error: 503")}, false},
+		{"empty", nil, false},
+	}
+	for _, tt := range tests {
+		if got := authLoopIn(tt.log); got != tt.want {
+			t.Errorf("%s: authLoopIn = %v, want %v", tt.name, got, tt.want)
+		}
 	}
 }
 

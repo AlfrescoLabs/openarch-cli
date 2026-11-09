@@ -90,7 +90,7 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
       interval: 15s
       timeout: 10s
       retries: 10

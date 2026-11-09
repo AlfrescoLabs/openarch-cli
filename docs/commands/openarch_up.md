@@ -15,6 +15,8 @@ recreates only the services that read it.
 
 Exit code 3 means a prerequisite failed. Exit code 4 means the stack did not
 become healthy before --timeout; the status of each service is still printed.
+up also stops with exit code 4 when a healthcheck fails with HTTP 401 for one
+minute, because a wrong password never becomes healthy.
 
 ```
 openarch up [flags]
