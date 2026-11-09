@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  Install and run <a href="https://github.com/hyland/OpenArch">OpenArch</a> with Docker Compose, from one command line tool.
+  Install and run <a href="https://github.com/hyland/OpenArch">Hyland OpenArch</a> with Docker Compose, from one command line tool.
 </p>
 
 <p align="center">
@@ -19,14 +19,17 @@
   <img alt="openarch doctor, init, up and smoke-test in a terminal" src="docs/demo/demo.gif" width="800">
 </p>
 
-# OpenArch CLI
+# CLI for OpenArch
 
-OpenArch CLI (`openarch`) is a command line tool to install and run [OpenArch](https://github.com/hyland/OpenArch) with Docker Compose.
+> [!IMPORTANT]
+> **Not an official Hyland product.** The CLI for OpenArch (the `openarch` command) is not Hyland OpenArch. It is in the [AlfrescoLabs](https://github.com/AlfrescoLabs) organization on GitHub because Hyland does not officially support it. Hyland OpenArch itself is at [github.com/hyland/OpenArch](https://github.com/hyland/OpenArch).
+
+The CLI for OpenArch (`openarch`) is a command line tool to install and run [Hyland OpenArch](https://github.com/hyland/OpenArch) with Docker Compose.
 
 It creates a workspace folder with plain files: `compose.yaml`, `.env`, `.env.local` and a few config files.
 You can read them, and you can run `docker compose` on them without the CLI.
 
-## Why OpenArch CLI
+## Why the CLI for OpenArch
 
 - **Plain files.** The workspace is a normal Docker Compose project. You can keep using it without the CLI.
 - **For people and for scripts.** Every question in the interactive mode is also a flag.
