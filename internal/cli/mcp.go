@@ -41,7 +41,7 @@ var mcpTools = []mcpTool{
 		defaults: map[string]string{"tail": "200"}},
 	{name: "api_ping", title: "Check the OpenArch API", command: []string{"api", "ping"}, kind: mcpserver.ReadOnly},
 	{name: "query", title: "Run a query", command: []string{"query"}, kind: mcpserver.ReadOnly,
-		args: []mcpserver.Arg{{Name: "query", Description: "the query, for example SELECT * FROM SysFolder", Required: true}}},
+		args: []mcpserver.Arg{{Name: "query", Description: "the query, for example SELECT * FROM SysFolder. Only SELECT * returns documents", Required: true}}},
 	{name: "documents_get", title: "Get a document", command: []string{"documents", "get"}, kind: mcpserver.ReadOnly,
 		args: []mcpserver.Arg{{Name: "id_or_path", Description: `document id, or path when it starts with "/" (the root is "/")`, Required: true}}},
 	{name: "documents_list", title: "List the documents in a folder", command: []string{"documents", "list"}, kind: mcpserver.ReadOnly,

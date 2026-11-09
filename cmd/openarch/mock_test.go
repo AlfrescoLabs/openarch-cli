@@ -71,6 +71,10 @@ func newMockOpenArch() *httptest.Server {
 				return
 			}
 			list := []map[string]any{docs["/projects"]}
+			// Like OpenArch, a query that names columns returns no documents.
+			if !strings.HasPrefix(q.Query, "SELECT *") {
+				list = []map[string]any{}
+			}
 			// The smoke test filters by name: WHERE sys_name = '<name>'.
 			if _, after, ok := strings.Cut(q.Query, "sys_name = '"); ok {
 				name, _, _ := strings.Cut(after, "'")

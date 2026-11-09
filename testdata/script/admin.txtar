@@ -14,6 +14,12 @@ stdout '1 to 1 of 1'
 exec openarch query 'SELECT * FROM SysFolder' --sync --output json
 stdout '"sync": "true"'
 stdout '"custom_field": "kept"'
+! stderr Warning
+exec openarch query 'SELECT sys_name FROM SysFolder'
+stderr 'Warning: No documents found. OpenArch returns documents only for SELECT \*'
+exec openarch query 'SELECT sys_name FROM SysFolder' --output json
+stdout '"documents": \[\]'
+stderr 'only for SELECT \*'
 ! exec openarch query 'SELEKT nothing'
 stderr 'HTTP 400 .*missing .SELECT.'
 ! exec openarch query 'SELECT * FROM X' --syntax sql

@@ -29,6 +29,8 @@ func newQueryCmd(app *App) *cobra.Command {
 
 The default syntax is HxQL, a SQL-like language, for example:
   SELECT * FROM SysFolder WHERE sys_parentPath = '/'
+Only SELECT * returns documents. A query that names columns, such as
+SELECT sys_name FROM SysFile, finds no documents.
 Use --syntax expr for the expression syntax.
 
 New documents can take a moment to reach the search index. --sync waits for it.
@@ -50,6 +52,9 @@ With --output json, the result is the server response as is.`,
 			if err != nil {
 				return err
 			}
+			if len(res.Documents) == 0 && selectsColumns(o.Syntax, o.Query) {
+				app.Printer.Warn("No documents found. OpenArch returns documents only for SELECT *, not for a list of columns.")
+			}
 			return app.Printer.Print(res)
 		},
 	}
@@ -62,6 +67,15 @@ With --output json, the result is the server response as is.`,
 	fl.BoolVar(&o.Sync, "sync", false, "wait until the search index has the latest changes")
 	fl.BoolVar(&o.Total, "total", false, "count every match, not only up to the server limit")
 	return cmd
+}
+
+// selectsColumns reports whether an HxQL query names columns instead of SELECT *.
+func selectsColumns(syntax, query string) bool {
+	if syntax == "expr" {
+		return false
+	}
+	words := strings.Fields(query)
+	return len(words) >= 2 && strings.EqualFold(words[0], "SELECT") && words[1] != "*"
 }
 
 func newDocumentsCmd(app *App) *cobra.Command {

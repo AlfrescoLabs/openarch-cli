@@ -8,6 +8,8 @@ Run a query with POST /api/query and list the documents found.
 
 The default syntax is HxQL, a SQL-like language, for example:
   SELECT * FROM SysFolder WHERE sys_parentPath = '/'
+Only SELECT * returns documents. A query that names columns, such as
+SELECT sys_name FROM SysFile, finds no documents.
 Use --syntax expr for the expression syntax.
 
 New documents can take a moment to reach the search index. --sync waits for it.
