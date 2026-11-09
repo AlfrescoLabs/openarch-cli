@@ -2,7 +2,7 @@
 
 `openarch` is one Go binary that installs and operates OpenArch (the `openarch-app-jvm` image,
 MongoDB and OpenSearch). Humans and AI agents use the same commands, output and exit codes.
-App for OpenArch support is planned (see [Planned: App for OpenArch](#planned-app-for-openarch)).
+App for OpenArch is a separate plugin (see [App for OpenArch](#app-for-openarch)).
 
 ## Problem and goals
 
@@ -71,7 +71,6 @@ Every command follows these rules.
 | Users from a YAML file | Users in MongoDB through an API | OpenArch has no user API. The YAML file is what OpenArch reads at startup. |
 | Caddy as the TLS proxy | nginx or Traefik | Both need more config for the same two TLS modes. |
 | App for OpenArch as a plugin | Built into the CLI (`init --with app-for-openarch`) | Built in, it would add schema keys, context endpoints and lifecycle cases to the core for a proof of concept. |
-| Wrap upstream App for OpenArch | Copy its templates | Copied templates drift from a proof of concept that changes often. |
 
 ## Workspace
 
@@ -233,51 +232,6 @@ The steps of `upgrade`, `backup`, `restore` and `clean` are in the README.
 - High availability and multi-node deployments.
 - Text extraction and search inside files. OpenArch indexes metadata only.
 
-## Planned: App for OpenArch
+## App for OpenArch
 
-Nothing in this section is built yet.
-
-### App for OpenArch plugin
-
-App for OpenArch will be a plugin, not part of the core CLI. It is a separate executable
-(name not final) that runs through the plugin hook (rule 12).
-
-The plugin will wrap the upstream repository
-[content-lake-app-deployment](https://github.com/AlfrescoLabs/content-lake-app-deployment).
-It will not embed its own copy of the App for OpenArch templates.
-
-How it will work:
-
-- The plugin downloads a pinned ref of the upstream repository into its own folder.
-- It drives the upstream `compose.yaml` with Compose profiles and a generated `.env.local`.
-- A newer ref is a plugin update, or an explicit ref option.
-- It calls `openarch` for anything that touches OpenArch.
-
-Reasons for a plugin:
-
-- The core CLI keeps one product and one workspace layout. The core schema, contexts and lifecycle commands do not grow for a proof of concept.
-- App for OpenArch can change and release on its own schedule, and so can the plugin.
-
-Reasons to wrap upstream:
-
-- App for OpenArch is a proof of concept and changes often. Copied templates would drift from upstream.
-- The upstream stack uses many Compose files, profiles and remote BuildKit contexts. Wrapping it keeps that logic in one place.
-- The upstream Makefile has no visible license, so the plugin does not copy it. It runs `docker compose` directly instead.
-
-Costs:
-
-- The plugin depends on the layout of the upstream repository at the pinned ref. Each ref bump needs a test run.
-- The plugin needs network access to download the ref.
-
-Open questions:
-
-- Where the plugin keeps its files, and how its config relates to `openarch.yaml`.
-- Where the credentials of Alfresco, Nuxeo and the RAG service live, since `openarch` contexts have only the `openarch` endpoint.
-- Whether the ref is a commit, and how the download and the remote build contexts are verified.
-
-### The Alfresco that App for OpenArch uses
-
-Two Alfresco setups are planned:
-
-1. The Alfresco bundled with the App for OpenArch stack.
-2. An existing Alfresco installation. The plugin installs the `content-lake-repo-model` module into it and connects the stack to it. Install method, supported versions, backup and uninstall need their own design first.
+App for OpenArch is not part of the core CLI. It is the `openarch-app` plugin (`openarch app ...`), which runs through the plugin hook (rule 12) and is in development in its own repository. The plugin wraps the upstream repository [content-lake-app-deployment](https://github.com/AlfrescoLabs/content-lake-app-deployment) at a pinned commit, and it uses the Hyland OpenArch that the upstream stack bundles.
