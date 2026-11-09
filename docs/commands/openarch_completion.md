@@ -38,7 +38,7 @@ openarch completion [flags]
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch completion bash](openarch_completion_bash.md)	 - Generate the autocompletion script for bash
 * [openarch completion fish](openarch_completion_fish.md)	 - Generate the autocompletion script for fish
 * [openarch completion powershell](openarch_completion_powershell.md)	 - Generate the autocompletion script for powershell

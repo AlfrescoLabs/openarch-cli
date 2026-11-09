@@ -1,12 +1,13 @@
 ---
 name: openarch
-description: Install, run and check OpenArch (github.com/hyland/OpenArch) on this machine with the openarch CLI and Docker Compose. Use it when the user wants a local OpenArch, wants to start, stop, upgrade, back up or reset one, or wants to create, upload, list or query documents in it.
+description: Install, run and check Hyland OpenArch (github.com/hyland/OpenArch) on this machine with the CLI for OpenArch (the openarch command) and Docker Compose. Use it when the user wants a local OpenArch, wants to start, stop, upgrade, back up or reset one, or wants to create, upload, list or query documents in it.
 ---
 
-# OpenArch with the openarch CLI
+# Hyland OpenArch with the CLI for OpenArch
 
-openarch installs and operates OpenArch with Docker Compose. A workspace is a
-folder with `openarch.yaml` (the source of truth) and the files made from it.
+openarch, the CLI for OpenArch, installs and operates Hyland OpenArch with Docker Compose.
+Not an official Hyland product: an AlfrescoLabs project that Hyland does not officially support.
+A workspace is a folder with `openarch.yaml` (the source of truth) and the files made from it.
 Pass `--dir <folder>` to every command, or run it inside the workspace.
 
 ## Rules

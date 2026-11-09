@@ -141,8 +141,9 @@ func execute(ctx context.Context, app *App, args []string) int {
 func newRootCmd(app *App) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "openarch",
-		Short: "Install and operate OpenArch",
-		Long: `openarch installs and operates OpenArch with Docker Compose.
+		Short: "CLI for OpenArch: install and operate Hyland OpenArch",
+		Long: `openarch, the CLI for OpenArch, installs and operates Hyland OpenArch with Docker Compose.
+Not an official Hyland product: an AlfrescoLabs project that Hyland does not officially support.
 
 Every command supports --output json. Results go to stdout and logs go to stderr.
 Exit codes: 0 ok, 1 error, 2 bad usage, 3 prerequisite missing,

@@ -47,7 +47,7 @@ openarch documents [flags]
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch documents content](openarch_documents_content.md)	 - Download the file of a document
 * [openarch documents create](openarch_documents_create.md)	 - Create a document under a parent
 * [openarch documents get](openarch_documents_get.md)	 - Show a document

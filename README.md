@@ -593,7 +593,7 @@ only a shell and the skill, and lists the local models that work.
 For an agent that does not read skills, add these lines to its instructions file:
 
 ```
-OpenArch runs locally with the openarch CLI. Use --output json --non-interactive on every command.
+Hyland OpenArch runs locally with the CLI for OpenArch (the openarch command). Use --output json --non-interactive on every command.
 Start with 'openarch doctor', then 'openarch init --dir openarch', then 'openarch up --dir openarch'.
 Run 'openarch help --output json' for every command and exit code. Never put a password in an argument.
 ```

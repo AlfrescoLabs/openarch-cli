@@ -96,9 +96,9 @@ func TestLLMsTxt(t *testing.T) {
 // summary, then lists of links. Links are relative to the docs folder.
 func llmsTxt(doc helpDoc) []byte {
 	var b bytes.Buffer
-	b.WriteString(`# OpenArch CLI
+	b.WriteString(`# CLI for OpenArch
 
-> openarch is a command line tool to install and run OpenArch (https://github.com/hyland/OpenArch) with Docker Compose. Every command supports --output json, and the exit codes are stable.
+> openarch, the CLI for OpenArch, is a command line tool to install and run Hyland OpenArch (https://github.com/hyland/OpenArch) with Docker Compose. Not an official Hyland product: an AlfrescoLabs project that Hyland does not officially support. Every command supports --output json, and the exit codes are stable.
 
 How to call it from a program or an AI agent:
 

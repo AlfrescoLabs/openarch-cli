@@ -52,7 +52,7 @@ openarch config [flags]
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch config delete](openarch_config_delete.md)	 - Delete a context and its stored passwords
 * [openarch config get](openarch_config_get.md)	 - Show a context
 * [openarch config list](openarch_config_list.md)	 - List the contexts

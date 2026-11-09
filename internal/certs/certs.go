@@ -51,7 +51,7 @@ func SelfSigned(serverName string, now time.Time) (certPEM, keyPEM []byte, err e
 	dns, ips := Names(serverName)
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: serverName, Organization: []string{"OpenArch CLI self-signed"}},
+		Subject:               pkix.Name{CommonName: serverName, Organization: []string{"CLI for OpenArch self-signed"}},
 		NotBefore:             now.Add(-time.Hour),
 		NotAfter:              now.Add(Validity),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,

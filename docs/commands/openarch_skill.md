@@ -38,7 +38,7 @@ it. The skill is part of the binary, so it matches the commands of this release.
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch skill install](openarch_skill_install.md)	 - Write the skill to .claude/skills/openarch/SKILL.md
 * [openarch skill show](openarch_skill_show.md)	 - Print the skill
 

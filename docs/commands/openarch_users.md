@@ -45,7 +45,7 @@ openarch users [flags]
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch users add](openarch_users_add.md)	 - Add a user
 * [openarch users delete](openarch_users_delete.md)	 - Delete a user
 * [openarch users list](openarch_users_list.md)	 - List the users

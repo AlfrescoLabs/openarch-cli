@@ -48,6 +48,6 @@ set') for plugins.
 
 ### SEE ALSO
 
-* [openarch](openarch.md)	 - Install and operate OpenArch
+* [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
 * [openarch plugin list](openarch_plugin_list.md)	 - List the openarch-<name> executables on PATH
 

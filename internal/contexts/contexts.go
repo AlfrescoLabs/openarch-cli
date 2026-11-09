@@ -107,7 +107,7 @@ func Save(dir string, c Config) error {
 		return err
 	}
 	var b bytes.Buffer
-	b.WriteString("# openarch CLI connections. Passwords are not in this file:\n# they are in the OS credential store, or in credentials.json next to it.\n")
+	b.WriteString("# CLI for OpenArch connections. Passwords are not in this file:\n# they are in the OS credential store, or in credentials.json next to it.\n")
 	enc := yaml.NewEncoder(&b)
 	enc.SetIndent(2)
 	if err := enc.Encode(c); err != nil {

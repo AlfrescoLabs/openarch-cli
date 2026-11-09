@@ -1,7 +1,7 @@
 # show prints the SKILL.md of the binary
 exec openarch skill show
 stdout '^name: openarch$'
-stdout '^# OpenArch with the openarch CLI$'
+stdout '^# Hyland OpenArch with the CLI for OpenArch$'
 ! stderr .
 
 exec openarch skill show --output json
