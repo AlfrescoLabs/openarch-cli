@@ -74,7 +74,7 @@ release:
     name: openarch-cli
   draft: true
   prerelease: auto
-  name_template: "openarch {{ .Version }}"
+  name_template: "CLI for OpenArch {{ .Version }}"
 
 # The tap and the bucket are shared by AlfrescoLabs tools. GoReleaser only
 # writes the cask and the manifest to dist/: GitHub refuses pushes to them from
@@ -94,7 +94,7 @@ homebrew_casks:
       email: angel.fernandoborroy@hyland.com
     commit_msg_template: "openarch {{ .Version }}"
     homepage: https://github.com/AlfrescoLabs/openarch-cli
-    description: Install and operate OpenArch with Docker Compose
+    description: Unofficial CLI to install and operate Hyland OpenArch with Docker Compose
     license: Apache-2.0
     generate_completions_from_executable:
       executable: openarch
@@ -119,5 +119,5 @@ scoops:
       email: angel.fernandoborroy@hyland.com
     commit_msg_template: "openarch {{ .Version }}"
     homepage: https://github.com/AlfrescoLabs/openarch-cli
-    description: Install and operate OpenArch with Docker Compose
+    description: Unofficial CLI to install and operate Hyland OpenArch with Docker Compose
     license: Apache-2.0
