@@ -2,7 +2,7 @@
 
 `openarch` is one Go binary that installs and operates OpenArch (the `openarch-app-jvm` image,
 MongoDB and OpenSearch). Humans and AI agents use the same commands, output and exit codes.
-Content Lake support is planned (see [Planned: Content Lake](#planned-content-lake)).
+App for OpenArch support is planned (see [Planned: App for OpenArch](#planned-app-for-openarch)).
 
 ## Problem and goals
 
@@ -70,8 +70,8 @@ Every command follows these rules.
 | MCP tools run cobra commands in-process | A separate MCP server with its own code | Two code paths would drift. In-process tools share flags, validation and exit codes with the CLI. |
 | Users from a YAML file | Users in MongoDB through an API | OpenArch has no user API. The YAML file is what OpenArch reads at startup. |
 | Caddy as the TLS proxy | nginx or Traefik | Both need more config for the same two TLS modes. |
-| Content Lake as a plugin | Built into the CLI (`init --with content-lake`) | Built in, it would add schema keys, context endpoints and lifecycle cases to the core for a proof of concept. |
-| Wrap upstream Content Lake | Copy its templates | Copied templates drift from a proof of concept that changes often. |
+| App for OpenArch as a plugin | Built into the CLI (`init --with app-for-openarch`) | Built in, it would add schema keys, context endpoints and lifecycle cases to the core for a proof of concept. |
+| Wrap upstream App for OpenArch | Copy its templates | Copied templates drift from a proof of concept that changes often. |
 
 ## Workspace
 
@@ -233,18 +233,18 @@ The steps of `upgrade`, `backup`, `restore` and `clean` are in the README.
 - High availability and multi-node deployments.
 - Text extraction and search inside files. OpenArch indexes metadata only.
 
-## Planned: Content Lake
+## Planned: App for OpenArch
 
 Nothing in this section is built yet.
 
-### Content Lake plugin
+### App for OpenArch plugin
 
-Content Lake will be a plugin, not part of the core CLI. It is a separate executable
-(`openarch-content-lake`, name not final) that runs through the plugin hook (rule 12).
+App for OpenArch will be a plugin, not part of the core CLI. It is a separate executable
+(name not final) that runs through the plugin hook (rule 12).
 
 The plugin will wrap the upstream repository
 [content-lake-app-deployment](https://github.com/AlfrescoLabs/content-lake-app-deployment).
-It will not embed its own copy of the Content Lake templates.
+It will not embed its own copy of the App for OpenArch templates.
 
 How it will work:
 
@@ -256,11 +256,11 @@ How it will work:
 Reasons for a plugin:
 
 - The core CLI keeps one product and one workspace layout. The core schema, contexts and lifecycle commands do not grow for a proof of concept.
-- Content Lake can change and release on its own schedule, and so can the plugin.
+- App for OpenArch can change and release on its own schedule, and so can the plugin.
 
 Reasons to wrap upstream:
 
-- Content Lake is a proof of concept and changes often. Copied templates would drift from upstream.
+- App for OpenArch is a proof of concept and changes often. Copied templates would drift from upstream.
 - The upstream stack uses many Compose files, profiles and remote BuildKit contexts. Wrapping it keeps that logic in one place.
 - The upstream Makefile has no visible license, so the plugin does not copy it. It runs `docker compose` directly instead.
 
@@ -275,9 +275,9 @@ Open questions:
 - Where the credentials of Alfresco, Nuxeo and the RAG service live, since `openarch` contexts have only the `openarch` endpoint.
 - Whether the ref is a commit, and how the download and the remote build contexts are verified.
 
-### Alfresco for Content Lake
+### The Alfresco that App for OpenArch uses
 
 Two Alfresco setups are planned:
 
-1. The Alfresco bundled with the Content Lake stack.
+1. The Alfresco bundled with the App for OpenArch stack.
 2. An existing Alfresco installation. The plugin installs the `content-lake-repo-model` module into it and connects the stack to it. Install method, supported versions, backup and uninstall need their own design first.
