@@ -108,6 +108,7 @@ The current release is 0.5.2. The commands:
 | `openarch secrets rotate` | Gives new passwords to the OpenArch, MongoDB and OpenSearch users |
 | `openarch mcp` | Runs an MCP server, so that AI agents can use the commands as tools |
 | `openarch skill` | Installs the Agent Skill that teaches AI coding agents to use the CLI (`install`, `show`) |
+| `openarch plugin list` | Lists the plugins (`openarch-<name>` executables) on `PATH`. See [Plugins](#plugins) |
 | `openarch self-update` | Replaces the binary with the latest release, after a signature check |
 | `openarch completion` | Prints the shell completion script for bash, zsh, fish or PowerShell |
 | `openarch version` | Prints the version |
@@ -597,6 +598,37 @@ Hyland OpenArch runs locally with the CLI for OpenArch (the openarch command). U
 Start with 'openarch doctor', then 'openarch init --dir openarch', then 'openarch up --dir openarch'.
 Run 'openarch help --output json' for every command and exit code. Never put a password in an argument.
 ```
+
+## Plugins
+
+Since 0.5.0, `openarch <name> ...` runs the executable `openarch-<name>` from `PATH` with the arguments
+after the name, as git and kubectl do. Built-in commands always win.
+
+```
+openarch plugin list                  # the plugins on PATH
+openarch plugin list --output json
+openarch app up                       # runs: openarch-app up
+```
+
+| Plugin | What it does |
+| --- | --- |
+| [openarch-app](https://github.com/AlfrescoLabs/openarch-app) | Installs and operates App for OpenArch (Alfresco and Nuxeo ingesters, a RAG service and a UI) next to Hyland OpenArch |
+| [openarch-docs](https://github.com/AlfrescoLabs/openarch-docs) | Answers questions about a folder of case documents with local models, and keeps the case in Hyland OpenArch |
+
+To write a plugin:
+
+- Name the executable `openarch-<name>` and put it on `PATH`. Any language works.
+- The plugin gets the environment of `openarch`. Global flags before the name become environment
+  variables: `OPENARCH_OUTPUT`, `OPENARCH_WORKSPACE`, `OPENARCH_CONTEXT`, `OPENARCH_NON_INTERACTIVE`,
+  `OPENARCH_VERBOSE` and `NO_COLOR`. `OPENARCH_BIN` is the path of `openarch`.
+- To reach OpenArch, run `openarch` (`api`, `documents`, `query`) with `--output json`. Those commands find
+  the password in the workspace or the saved connection, so the plugin needs no copy of the credentials.
+  `openarch` removes `OPENARCH_PASSWORD` from the plugin environment.
+- The exit code of the plugin is the exit code of `openarch`. Follow the [output contract](#output-and-exit-codes)
+  by convention, so scripts and agents can handle the plugin the same way.
+
+A plugin is trusted code. It runs with the rights of the user, and it can run any `openarch` command,
+`config get --show-secrets` too. Install only plugins you trust.
 
 ## Development
 
