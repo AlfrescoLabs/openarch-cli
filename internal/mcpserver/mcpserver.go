@@ -1,10 +1,11 @@
-// Package mcpserver exposes CLI commands as MCP tools over stdio.
+// Package mcpserver exposes CLI commands as MCP tools over stdio or
+// Streamable HTTP.
 //
 // A tool runs one CLI command with --output json and --non-interactive, and
 // returns its JSON result. The input schema of a tool comes from the flags of
 // its command, so the tools and the commands cannot drift apart. Command
-// progress (stderr) becomes MCP progress notifications. Stdout is the MCP
-// channel, so nothing else may write to it.
+// progress (stderr) becomes MCP progress notifications. With stdio, stdout is
+// the MCP channel, so nothing else may write to it.
 package mcpserver
 
 import (
