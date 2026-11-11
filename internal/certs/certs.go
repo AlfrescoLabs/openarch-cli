@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -106,4 +108,28 @@ func describe(err error) error {
 		return errors.New(m)
 	}
 	return fmt.Errorf("invalid certificate or key: %w", err)
+}
+
+// SelfSignedFiles returns the self-signed pair kept in certFile and keyFile.
+// It writes a new pair when the files are missing or not Reusable for
+// serverName. The key file gets mode 0600.
+func SelfSignedFiles(certFile, keyFile, serverName string, now time.Time) (certPEM, keyPEM []byte, err error) {
+	certPEM, err1 := os.ReadFile(certFile)
+	keyPEM, err2 := os.ReadFile(keyFile)
+	if err1 == nil && err2 == nil && Reusable(certPEM, keyPEM, serverName, now) {
+		return certPEM, keyPEM, nil
+	}
+	if certPEM, keyPEM, err = SelfSigned(serverName, now); err != nil {
+		return nil, nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(certFile), 0o700); err != nil {
+		return nil, nil, err
+	}
+	if err := os.WriteFile(keyFile, keyPEM, 0o600); err != nil {
+		return nil, nil, err
+	}
+	if err := os.WriteFile(certFile, certPEM, 0o644); err != nil {
+		return nil, nil, err
+	}
+	return certPEM, keyPEM, nil
 }

@@ -10,10 +10,17 @@ and operate OpenArch with the same commands as the CLI.
 The server runs on stdin and stdout. With --listen it serves Streamable HTTP
 on host:port instead, at the path /mcp, for remote agents or several
 clients. A port alone means 127.0.0.1, so --listen 8765 is 127.0.0.1:8765.
-It prints its URL, then runs until it is stopped. Every HTTP request needs the header "Authorization: Bearer
-<token>"; 'openarch mcp token' prints the token. --no-auth turns the token
-off. On an address that is not loopback, --no-auth also needs
---allow-remote-no-auth.
+It prints its URL, then runs until it is stopped.
+
+Every HTTP request needs the header "Authorization: Bearer <token>";
+'openarch mcp token' prints the token. --no-auth turns the token off. On an
+address that is not loopback, --no-auth also needs --allow-remote-no-auth.
+
+--tls serves HTTPS, with the same modes as init. self-signed keeps its
+certificate in the CLI config folder, and the start result names the file
+that clients must trust. custom takes --cert and --key. The certificate is
+for --server-name, by default the --listen host (localhost for all
+interfaces).
 
 Each tool runs one command with --output json and returns its JSON result.
 A failed command gives an error result with its exit code. Command progress
@@ -45,6 +52,7 @@ openarch mcp [flags]
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
   openarch mcp --dir my-openarch --listen 8765
   claude mcp add --transport http openarch http://127.0.0.1:8765/mcp --header "Authorization: Bearer $(openarch mcp token)"
+  openarch mcp --dir my-openarch --listen 0.0.0.0:8765 --tls self-signed --server-name openarch.local
 ```
 
 ### Options
@@ -53,10 +61,14 @@ openarch mcp [flags]
       --allow-destructive      add the tools that stop services or delete data
       --allow-insecure         let the init tool take the options that turn security off
       --allow-remote-no-auth   allow --no-auth on an address that is not loopback
+      --cert string            PEM certificate file for --tls custom
   -h, --help                   help for mcp
+      --key string             PEM private key file for --tls custom
       --listen string          serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1
       --max-result-bytes int   cut longer tool results, for models with a small context; 0: no limit (default 16384)
       --no-auth                serve HTTP without the bearer token
+      --server-name string     host name of the certificate (default: the --listen host)
+      --tls string             HTTPS mode: none, self-signed, custom (default "none")
 ```
 
 ### Options inherited from parent commands

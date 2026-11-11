@@ -2,6 +2,9 @@ package certs
 
 import (
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -77,5 +80,25 @@ func TestCheckPairMismatch(t *testing.T) {
 	}
 	if _, err := CheckPair([]byte("nope"), otherKey); err == nil {
 		t.Error("CheckPair accepted a non-PEM certificate")
+	}
+}
+
+func TestSelfSignedFiles(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "mcp")
+	certFile, keyFile := filepath.Join(dir, "cert.pem"), filepath.Join(dir, "key.pem")
+	first, _, err := SelfSignedFiles(certFile, keyFile, "localhost", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi, err := os.Stat(keyFile); err != nil || fi.Mode().Perm() != 0o600 && runtime.GOOS != "windows" {
+		t.Errorf("key file: %v, %v", fi, err)
+	}
+	again, _, err := SelfSignedFiles(certFile, keyFile, "localhost", now.Add(time.Hour))
+	if err != nil || string(again) != string(first) {
+		t.Errorf("a reusable pair was not kept: %v", err)
+	}
+	other, _, err := SelfSignedFiles(certFile, keyFile, "openarch.local", now)
+	if err != nil || string(other) == string(first) {
+		t.Errorf("a pair for another name was kept: %v", err)
 	}
 }

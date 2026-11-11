@@ -16,7 +16,7 @@ exec openarch mcp token --rotate
 
 # The HTTP flags need --listen
 ! exec openarch mcp --no-auth
-stderr '^Error: --no-auth and --allow-remote-no-auth need --listen'
+stderr '^Error: --no-auth needs --listen'
 
 # No auth on an address that is not loopback needs a second flag
 ! exec openarch mcp --listen 0.0.0.0:0 --no-auth --output json
@@ -27,3 +27,22 @@ stdout '"hint": "Remove --no-auth, listen on 127.0.0.1, or add --allow-remote-no
 # A bad address
 ! exec openarch mcp --listen openarch.local
 stderr '^Error: invalid --listen address "openarch.local"'
+
+# The TLS flags need --listen, and --tls must be a known mode
+! exec openarch mcp --tls self-signed
+stderr '^Error: --tls needs --listen'
+! exec openarch mcp --listen 0 --tls bogus
+stderr '^Error: invalid --tls "bogus"'
+
+# --cert and --key go with --tls custom only, and custom needs both
+! exec openarch mcp --listen 0 --cert c.pem
+stderr '^Error: --cert and --key go with --tls custom'
+! exec openarch mcp --listen 0 --tls custom --cert c.pem
+stderr '^Error: --cert and --key go with --tls custom'
+! exec openarch mcp --listen 0 --tls custom --cert missing.pem --key missing.pem
+stderr '^Error: cannot read certificate'
+! exec openarch mcp --listen 0 --tls custom --cert bad.pem --key bad.pem
+stderr '^Error: invalid TLS files'
+
+-- bad.pem --
+not a certificate

@@ -3,21 +3,27 @@ package cli
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/certs"
 	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/mcpserver"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/version"
+	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
 // mcpTool names one command that the MCP server exposes.
@@ -108,7 +114,13 @@ type mcpHTTP struct {
 	listen            string
 	noAuth            bool
 	allowRemoteNoAuth bool
+	tls               string
+	cert, key         string
+	serverName        string
 }
+
+// mcpHTTPFlags are the flags that need --listen.
+var mcpHTTPFlags = []string{"no-auth", "allow-remote-no-auth", "tls", "cert", "key", "server-name"}
 
 func newMCPCmd(app *App) *cobra.Command {
 	var allowDestructive, allowInsecure bool
@@ -123,10 +135,17 @@ and operate OpenArch with the same commands as the CLI.
 The server runs on stdin and stdout. With --listen it serves Streamable HTTP
 on host:port instead, at the path ` + mcpserver.Path + `, for remote agents or several
 clients. A port alone means 127.0.0.1, so --listen ` + mcpPort + ` is 127.0.0.1:` + mcpPort + `.
-It prints its URL, then runs until it is stopped. Every HTTP request needs the header "Authorization: Bearer
-<token>"; 'openarch mcp token' prints the token. --no-auth turns the token
-off. On an address that is not loopback, --no-auth also needs
---allow-remote-no-auth.
+It prints its URL, then runs until it is stopped.
+
+Every HTTP request needs the header "Authorization: Bearer <token>";
+'openarch mcp token' prints the token. --no-auth turns the token off. On an
+address that is not loopback, --no-auth also needs --allow-remote-no-auth.
+
+--tls serves HTTPS, with the same modes as init. self-signed keeps its
+certificate in the CLI config folder, and the start result names the file
+that clients must trust. custom takes --cert and --key. The certificate is
+for --server-name, by default the --listen host (localhost for all
+interfaces).
 
 Each tool runs one command with --output json and returns its JSON result.
 A failed command gives an error result with its exit code. Command progress
@@ -149,13 +168,16 @@ the parameters for a smaller result (tail, limit, offset).`,
   openarch mcp --dir my-openarch --allow-destructive
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
   openarch mcp --dir my-openarch --listen ` + mcpPort + `
-  ` + mcpAddExample,
+  ` + mcpAddExample + `
+  openarch mcp --dir my-openarch --listen 0.0.0.0:` + mcpPort + ` --tls self-signed --server-name openarch.local`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts := app.mcpOptions(cmd.Root(), allowDestructive, allowInsecure, maxResult)
 			if h.listen == "" {
-				if h.noAuth || h.allowRemoteNoAuth {
-					return output.Usage("--no-auth and --allow-remote-no-auth need --listen", "")
+				for _, name := range mcpHTTPFlags {
+					if cmd.Flags().Changed(name) {
+						return output.Usage("--"+name+" needs --listen", "Add --listen "+mcpPort+" to serve HTTP.")
+					}
 				}
 				return mcpserver.Serve(cmd.Context(), opts)
 			}
@@ -168,6 +190,10 @@ the parameters for a smaller result (tail, limit, offset).`,
 	cmd.Flags().StringVar(&h.listen, "listen", "", "serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1")
 	cmd.Flags().BoolVar(&h.noAuth, "no-auth", false, "serve HTTP without the bearer token")
 	cmd.Flags().BoolVar(&h.allowRemoteNoAuth, "allow-remote-no-auth", false, "allow --no-auth on an address that is not loopback")
+	cmd.Flags().StringVar(&h.tls, "tls", workspace.TLSNone, "HTTPS mode: "+strings.Join(workspace.TLSModes, ", "))
+	cmd.Flags().StringVar(&h.cert, "cert", "", "PEM certificate file for --tls custom")
+	cmd.Flags().StringVar(&h.key, "key", "", "PEM private key file for --tls custom")
+	cmd.Flags().StringVar(&h.serverName, "server-name", "", "host name of the certificate (default: the --listen host)")
 	cmd.AddCommand(newMCPTokenCmd(app))
 	return cmd
 }
@@ -176,12 +202,18 @@ the parameters for a smaller result (tail, limit, offset).`,
 type mcpListening struct {
 	URL  string `json:"url"`
 	Auth string `json:"auth"` // "token" or "none"
+	TLS  string `json:"tls"`
+	// Cert is the self-signed certificate that clients must trust.
+	Cert string `json:"cert,omitempty"`
 }
 
 func (l mcpListening) WriteText(w io.Writer) error {
 	msg := "MCP server on " + l.URL + "\n"
 	if l.Auth == "token" {
 		msg += "Clients send the header \"Authorization: Bearer <token>\". 'openarch mcp token' prints the token.\n"
+	}
+	if l.Cert != "" {
+		msg += "Self-signed certificate: " + l.Cert + ". Clients must trust it.\n"
 	}
 	_, err := io.WriteString(w, msg)
 	return err
@@ -202,10 +234,13 @@ func (a *App) serveMCPHTTP(ctx context.Context, opts mcpserver.Options, h mcpHTT
 		return output.Usage(fmt.Sprintf("refusing to serve %s without authentication: every client that reaches it could run the tools", addr),
 			"Remove --no-auth, listen on 127.0.0.1, or add --allow-remote-no-auth.")
 	}
-	res := mcpListening{Auth: "none"}
-	var token string
+	res := mcpListening{Auth: "none", TLS: h.tls}
+	hopts := mcpserver.HTTPOptions{}
+	if hopts.TLS, res.Cert, err = a.mcpTLS(h, host); err != nil {
+		return err
+	}
 	if !h.noAuth {
-		if token, err = a.mcpToken(false); err != nil {
+		if hopts.Token, err = a.mcpToken(false); err != nil {
 			return err
 		}
 		res.Auth = "token"
@@ -217,15 +252,75 @@ func (a *App) serveMCPHTTP(ctx context.Context, opts mcpserver.Options, h mcpHTT
 	switch {
 	case h.noAuth:
 		a.Printer.Warn("The MCP server has no authentication: every client that reaches it can run the tools.")
-	case !local:
-		a.Printer.Warn("The bearer token goes over plain HTTP: anyone on the network path can read it.")
+	case !local && hopts.TLS == nil:
+		a.Printer.Warn("The bearer token goes over plain HTTP: anyone on the network path can read it. Add --tls.")
 	}
-	res.URL = "http://" + l.Addr().String() + mcpserver.Path
+	scheme := "http"
+	if hopts.TLS != nil {
+		scheme = "https"
+	}
+	res.URL = scheme + "://" + l.Addr().String() + mcpserver.Path
 	if err := a.Printer.Print(res); err != nil {
 		_ = l.Close()
 		return err
 	}
-	return mcpserver.ServeHTTP(ctx, l, opts, mcpserver.HTTPOptions{Token: token})
+	return mcpserver.ServeHTTP(ctx, l, opts, hopts)
+}
+
+// mcpTLS returns the TLS config of the HTTP server, or nil for --tls none.
+// For self-signed it also returns the certificate file.
+func (a *App) mcpTLS(h mcpHTTP, host string) (*tls.Config, string, error) {
+	if !slices.Contains(workspace.TLSModes, h.tls) {
+		return nil, "", output.Usage(fmt.Sprintf("invalid --tls %q", h.tls), "Use one of: "+strings.Join(workspace.TLSModes, ", ")+".")
+	}
+	if custom := h.tls == workspace.TLSCustom; custom != (h.cert != "") || custom != (h.key != "") {
+		return nil, "", output.Usage("--cert and --key go with --tls custom, and --tls custom needs both", "")
+	}
+	if h.tls == workspace.TLSNone {
+		return nil, "", nil
+	}
+	name := h.serverName
+	if name == "" {
+		name = host
+		if ip := net.ParseIP(host); host == "" || ip != nil && ip.IsUnspecified() {
+			name = "localhost"
+		}
+	}
+	var certPEM, keyPEM []byte
+	var certFile string
+	var err error
+	if h.tls == workspace.TLSSelfSigned {
+		dir, err := a.configDir()
+		if err != nil {
+			return nil, "", err
+		}
+		certFile = filepath.Join(dir, "mcp", "cert.pem")
+		if certPEM, keyPEM, err = certs.SelfSignedFiles(certFile, filepath.Join(dir, "mcp", "key.pem"), name, time.Now()); err != nil {
+			return nil, "", err
+		}
+	} else {
+		if certPEM, err = os.ReadFile(h.cert); err != nil {
+			return nil, "", output.Usage("cannot read certificate: "+err.Error(), "Check --cert.")
+		}
+		if keyPEM, err = os.ReadFile(h.key); err != nil {
+			return nil, "", output.Usage("cannot read key: "+err.Error(), "Check --key.")
+		}
+		cert, err := certs.CheckPair(certPEM, keyPEM)
+		if err != nil {
+			return nil, "", output.Usage("invalid TLS files: "+err.Error(), "--cert must be a PEM certificate and --key its PEM private key.")
+		}
+		if cert.VerifyHostname(name) != nil {
+			a.Printer.Warn(fmt.Sprintf("The certificate is not valid for %s. Clients will reject it. Set --server-name.", name))
+		}
+		if time.Now().After(cert.NotAfter) {
+			a.Printer.Warn("The certificate expired on " + cert.NotAfter.Format(time.DateOnly) + ".")
+		}
+	}
+	pair, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, "", err
+	}
+	return &tls.Config{Certificates: []tls.Certificate{pair}, MinVersion: tls.VersionTLS12}, certFile, nil
 }
 
 // isLoopback reports whether host is localhost or a loopback IP address.
