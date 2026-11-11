@@ -30,7 +30,7 @@ Every command follows these rules.
 7. **No secrets in stdout** unless `--show-secrets` is set. Secrets go through `--password-stdin`, env vars or a hidden prompt. `--password` is accepted only with a warning.
 8. **Every security feature is optional.** A user can install everything with plain HTTP and no generated passwords.
 9. **Machine-readable help.** With `--output json`, `help` and `--help` print the command tree: flags with type, default and the fixed values from completion, examples and the exit codes. `docs/llms.txt` and `docs/commands` are built from the cobra tree, and tests fail when they are out of date. Every command has examples.
-10. **MCP server.** `openarch mcp` (stdio only) exposes commands as tools. The tool table in `internal/cli/mcp.go` is the list.
+10. **MCP server.** `openarch mcp` exposes commands as tools, on stdio or, with `--listen`, on Streamable HTTP. HTTP needs a bearer token from the credential store by default; `--no-auth` on a non-loopback address also needs `--allow-remote-no-auth`. TLS has the modes of `init`. The tool table in `internal/cli/mcp.go` is the list.
     - Each tool has a kind: read-only, write or destructive. Destructive tools (`down`, `clean`, `restore`, `secrets rotate`, `users delete`, `config delete`) are registered only with `--allow-destructive`. The raw `api` command is not a tool.
     - A call runs its cobra command in-process with `--output json --non-interactive`, so tools and commands share all logic and exit codes. Each call builds a new App and command tree. Write and destructive calls run one at a time.
     - The input schema comes from the command flags. Connection, password, `--yes` and `--follow` flags are never parameters. Positional arguments go after `--`.
@@ -222,7 +222,8 @@ unless `--force` is set.
 - `backup` runs while OpenArch runs. Changes made during the backup may be missing from it.
 - Plugins are trusted code with the rights of the user.
 - MCP tools return document content and server data to the model. That text is not trusted input.
-- The file credential backend stores passwords as plain text.
+- The file credential backend stores passwords and the MCP bearer token as plain text.
+- The MCP bearer token is one shared secret for every client, with no expiry. OAuth for the HTTP server is not built.
 
 The steps of `upgrade`, `backup`, `restore` and `clean` are in the README.
 

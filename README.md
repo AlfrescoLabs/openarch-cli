@@ -537,8 +537,8 @@ examples, plus the exit codes. `openarch <command> --help --output json` describ
 
 ## MCP server
 
-`openarch mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server on stdio, so that an
-AI agent can install and operate OpenArch with the same commands. Each tool runs one command with
+`openarch mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server on stdio, or on
+Streamable HTTP with `--listen`, so that an AI agent can install and operate OpenArch with the same commands. Each tool runs one command with
 `--output json` and returns its result. A failed command gives an error result that starts with the exit
 code.
 
@@ -549,6 +549,27 @@ claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
 # Any MCP client: the command and its arguments
 openarch mcp --dir /path/to/my-openarch
 ```
+
+Over HTTP, for remote agents or several clients at once:
+
+```
+# Serve http://127.0.0.1:8765/mcp (a port alone means 127.0.0.1)
+openarch mcp --dir /path/to/my-openarch --listen 8765
+
+# Claude Code, with the bearer token
+claude mcp add --transport http openarch http://127.0.0.1:8765/mcp \
+  --header "Authorization: Bearer $(openarch mcp token)"
+
+# Other machines: all interfaces, with HTTPS
+openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed --server-name openarch.local
+```
+
+- Every HTTP request needs the bearer token. `openarch mcp token` prints it (the first call makes it), and
+  `--rotate` makes a new one. The token is kept in the credential store, like the passwords.
+- `--no-auth` turns the token off. On an address that is not loopback it also needs `--allow-remote-no-auth`.
+- `--tls self-signed` or `--tls custom --cert <file> --key <file>` serves HTTPS. The start result names the
+  self-signed certificate that clients must trust.
+- One server serves every client, so commands that change the workspace still run one at a time.
 
 - `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
 - Tools that stop services or delete data (`down`, `clean`, `restore`, `secrets_rotate`, `users_delete`,
