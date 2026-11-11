@@ -3,13 +3,20 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"net"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
+	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/mcpserver"
+	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/version"
 )
 
@@ -85,14 +92,41 @@ var mcpTools = []mcpTool{
 // the confirmations, and a tool call must end.
 var mcpHiddenFlags = []string{"url", "user", "password", "password-stdin", "insecure", "admin-password-stdin", "yes", "follow"}
 
+// mcpPort is the port of the examples. A --listen value with no host is a
+// port on 127.0.0.1.
+const mcpPort = "8765"
+
+// mcpAddExample adds the HTTP server of the examples to Claude Code.
+const mcpAddExample = `claude mcp add --transport http openarch http://127.0.0.1:` + mcpPort + mcpserver.Path +
+	` --header "Authorization: Bearer $(openarch mcp token)"`
+
+// The bearer token has one entry in the credential store, for every server.
+const mcpTokenURL, mcpTokenUser = "mcp", "bearer-token"
+
+// mcpHTTP are the flags of the Streamable HTTP transport.
+type mcpHTTP struct {
+	listen            string
+	noAuth            bool
+	allowRemoteNoAuth bool
+}
+
 func newMCPCmd(app *App) *cobra.Command {
 	var allowDestructive, allowInsecure bool
 	var maxResult int
+	var h mcpHTTP
 	cmd := &cobra.Command{
 		Use:   "mcp",
 		Short: "Run an MCP server that exposes the commands as tools",
-		Long: `Run a Model Context Protocol (MCP) server on stdin and stdout, so that an AI
-agent can install and operate OpenArch with the same commands as the CLI.
+		Long: `Run a Model Context Protocol (MCP) server, so that an AI agent can install
+and operate OpenArch with the same commands as the CLI.
+
+The server runs on stdin and stdout. With --listen it serves Streamable HTTP
+on host:port instead, at the path ` + mcpserver.Path + `, for remote agents or several
+clients. A port alone means 127.0.0.1, so --listen ` + mcpPort + ` is 127.0.0.1:` + mcpPort + `.
+It prints its URL, then runs until it is stopped. Every HTTP request needs the header "Authorization: Bearer
+<token>"; 'openarch mcp token' prints the token. --no-auth turns the token
+off. On an address that is not loopback, --no-auth also needs
+--allow-remote-no-auth.
 
 Each tool runs one command with --output json and returns its JSON result.
 A failed command gives an error result with its exit code. Command progress
@@ -113,15 +147,152 @@ A tool result longer than --max-result-bytes is cut, with a note that names
 the parameters for a smaller result (tail, limit, offset).`,
 		Example: `  openarch mcp --dir my-openarch
   openarch mcp --dir my-openarch --allow-destructive
-  claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch`,
+  claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
+  openarch mcp --dir my-openarch --listen ` + mcpPort + `
+  ` + mcpAddExample,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return mcpserver.Serve(cmd.Context(), app.mcpOptions(cmd.Root(), allowDestructive, allowInsecure, maxResult))
+			opts := app.mcpOptions(cmd.Root(), allowDestructive, allowInsecure, maxResult)
+			if h.listen == "" {
+				if h.noAuth || h.allowRemoteNoAuth {
+					return output.Usage("--no-auth and --allow-remote-no-auth need --listen", "")
+				}
+				return mcpserver.Serve(cmd.Context(), opts)
+			}
+			return app.serveMCPHTTP(cmd.Context(), opts, h)
 		},
 	}
 	cmd.Flags().BoolVar(&allowDestructive, "allow-destructive", false, "add the tools that stop services or delete data")
 	cmd.Flags().BoolVar(&allowInsecure, "allow-insecure", false, "let the init tool take the options that turn security off")
 	cmd.Flags().IntVar(&maxResult, "max-result-bytes", defaultMaxResultBytes, "cut longer tool results, for models with a small context; 0: no limit")
+	cmd.Flags().StringVar(&h.listen, "listen", "", "serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1")
+	cmd.Flags().BoolVar(&h.noAuth, "no-auth", false, "serve HTTP without the bearer token")
+	cmd.Flags().BoolVar(&h.allowRemoteNoAuth, "allow-remote-no-auth", false, "allow --no-auth on an address that is not loopback")
+	cmd.AddCommand(newMCPTokenCmd(app))
+	return cmd
+}
+
+// mcpListening is the result printed when the HTTP server starts.
+type mcpListening struct {
+	URL  string `json:"url"`
+	Auth string `json:"auth"` // "token" or "none"
+}
+
+func (l mcpListening) WriteText(w io.Writer) error {
+	msg := "MCP server on " + l.URL + "\n"
+	if l.Auth == "token" {
+		msg += "Clients send the header \"Authorization: Bearer <token>\". 'openarch mcp token' prints the token.\n"
+	}
+	_, err := io.WriteString(w, msg)
+	return err
+}
+
+func (a *App) serveMCPHTTP(ctx context.Context, opts mcpserver.Options, h mcpHTTP) error {
+	addr := h.listen
+	if _, err := strconv.ParseUint(addr, 10, 16); err == nil {
+		addr = net.JoinHostPort("127.0.0.1", addr)
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return output.Usage(fmt.Sprintf("invalid --listen address %q: %v", h.listen, err),
+			"Use host:port or a port, for example 127.0.0.1:"+mcpPort+" or "+mcpPort+".")
+	}
+	local := isLoopback(host)
+	if h.noAuth && !local && !h.allowRemoteNoAuth {
+		return output.Usage(fmt.Sprintf("refusing to serve %s without authentication: every client that reaches it could run the tools", addr),
+			"Remove --no-auth, listen on 127.0.0.1, or add --allow-remote-no-auth.")
+	}
+	res := mcpListening{Auth: "none"}
+	var token string
+	if !h.noAuth {
+		if token, err = a.mcpToken(false); err != nil {
+			return err
+		}
+		res.Auth = "token"
+	}
+	l, err := (&net.ListenConfig{}).Listen(ctx, "tcp", addr)
+	if err != nil {
+		return output.NewError(output.ExitError, err.Error(), "Choose another address with --listen.")
+	}
+	switch {
+	case h.noAuth:
+		a.Printer.Warn("The MCP server has no authentication: every client that reaches it can run the tools.")
+	case !local:
+		a.Printer.Warn("The bearer token goes over plain HTTP: anyone on the network path can read it.")
+	}
+	res.URL = "http://" + l.Addr().String() + mcpserver.Path
+	if err := a.Printer.Print(res); err != nil {
+		_ = l.Close()
+		return err
+	}
+	return mcpserver.ServeHTTP(ctx, l, opts, mcpserver.HTTPOptions{Token: token})
+}
+
+// isLoopback reports whether host is localhost or a loopback IP address.
+func isLoopback(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// mcpToken returns the bearer token from the credential store. It makes a new
+// one when there is none, or when rotate is set.
+func (a *App) mcpToken(rotate bool) (string, error) {
+	st, err := a.store()
+	if err != nil {
+		return "", err
+	}
+	if !rotate {
+		token, err := st.Get(mcpTokenURL, mcpTokenUser)
+		if err == nil {
+			return token, nil
+		}
+		if !errors.Is(err, credstore.ErrNotFound) {
+			return "", err
+		}
+	}
+	token := localenv.Password(40)
+	if err := st.Set(mcpTokenURL, mcpTokenUser, token); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+// mcpTokenResult is the result of 'mcp token'.
+type mcpTokenResult struct {
+	Token string `json:"token"`
+}
+
+func (r mcpTokenResult) WriteText(w io.Writer) error {
+	_, err := io.WriteString(w, r.Token+"\n")
+	return err
+}
+
+func newMCPTokenCmd(app *App) *cobra.Command {
+	var rotate bool
+	cmd := &cobra.Command{
+		Use:   "token",
+		Short: "Print the bearer token of 'openarch mcp --listen'",
+		Long: `Print the bearer token that MCP clients send to 'openarch mcp --listen'.
+
+The first call makes the token. It is kept in the credential store, like the
+OpenArch passwords, and every HTTP server of this user uses it. --rotate makes
+a new token; a running server keeps the old one until it starts again.`,
+		Example: `  openarch mcp token
+  openarch mcp token --rotate
+  ` + mcpAddExample,
+		Args: noArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			token, err := app.mcpToken(rotate)
+			if err != nil {
+				return err
+			}
+			return app.Printer.Print(mcpTokenResult{Token: token})
+		},
+	}
+	cmd.Flags().BoolVar(&rotate, "rotate", false, "make a new token")
 	return cmd
 }
 

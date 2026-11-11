@@ -53,6 +53,7 @@ How to call it from a program or an AI agent:
 - [openarch init](commands/openarch_init.md): Create an OpenArch workspace
 - [openarch logs](commands/openarch_logs.md): Show the logs of the services
 - [openarch mcp](commands/openarch_mcp.md): Run an MCP server that exposes the commands as tools
+- [openarch mcp token](commands/openarch_mcp_token.md): Print the bearer token of 'openarch mcp --listen'
 - [openarch migrate](commands/openarch_migrate.md): Update openarch.yaml to the schema of this openarch
 - [openarch plugin](commands/openarch_plugin.md): List the plugins that extend openarch
 - [openarch plugin list](commands/openarch_plugin_list.md): List the openarch-<name> executables on PATH

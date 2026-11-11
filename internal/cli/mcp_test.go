@@ -1,13 +1,19 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/mcpserver"
 )
 
@@ -155,6 +161,80 @@ func TestMCPInitHidesInsecureOptions(t *testing.T) {
 		}
 		if !all[name] {
 			t.Errorf("init does not take %s with --allow-insecure", name)
+		}
+	}
+}
+
+// syncBuffer is a bytes.Buffer that a test can read while a command writes it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// bearer adds the Authorization header to every request.
+type bearer struct{ token string }
+
+func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	r.Header.Set("Authorization", "Bearer "+b.token)
+	return http.DefaultTransport.RoundTrip(r)
+}
+
+func TestMCPListen(t *testing.T) {
+	t.Setenv(envOutput, "")
+	var out, errw syncBuffer
+	app := newApp(Streams{In: strings.NewReader(""), Out: &out, Err: &errw})
+	app.credStore = &credstore.Memory{}
+	token, err := app.mcpToken(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan int, 1)
+	go func() { done <- execute(ctx, app, []string{"mcp", "--listen", "0", "--output", "json"}) }()
+	var started mcpListening
+	deadline := time.Now().Add(5 * time.Second)
+	for json.Unmarshal([]byte(out.String()), &started) != nil && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if started.Auth != "token" || !strings.HasPrefix(started.URL, "http://127.0.0.1:") {
+		t.Fatalf("start result %q, stderr %q", out.String(), errw.String())
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(context.Background(),
+		&mcp.StreamableClientTransport{Endpoint: started.URL, HTTPClient: &http.Client{Transport: bearer{token}}, MaxRetries: -1}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "version", Arguments: map[string]any{}})
+	if err != nil || res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, `"version"`) {
+		t.Errorf("version tool: %+v, %v", res, err)
+	}
+	_ = cs.Close()
+	cancel()
+	if code := <-done; code != 0 {
+		t.Errorf("exit code %d, stderr %q", code, errw.String())
+	}
+}
+
+func TestIsLoopback(t *testing.T) {
+	for host, want := range map[string]bool{
+		"localhost": true, "127.0.0.1": true, "127.0.0.2": true, "::1": true,
+		"": false, "0.0.0.0": false, "::": false, "192.168.1.10": false, "openarch.example.com": false,
+	} {
+		if got := isLoopback(host); got != want {
+			t.Errorf("isLoopback(%q) = %v", host, got)
 		}
 	}
 }

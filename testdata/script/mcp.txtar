@@ -1,0 +1,29 @@
+# The first call makes the token and keeps it in the credential store
+exec openarch mcp token
+stdout '^[A-Za-z0-9]{40}$'
+cp stdout first.txt
+grep '"url": "mcp"' $WORK/.openarch/credentials.json
+
+# Later calls print the same token
+exec openarch mcp token --output json
+stdout '"token": "[A-Za-z0-9]{40}"'
+exec openarch mcp token
+cmp stdout first.txt
+
+# --rotate makes a new token
+exec openarch mcp token --rotate
+! cmp stdout first.txt
+
+# The HTTP flags need --listen
+! exec openarch mcp --no-auth
+stderr '^Error: --no-auth and --allow-remote-no-auth need --listen'
+
+# No auth on an address that is not loopback needs a second flag
+! exec openarch mcp --listen 0.0.0.0:0 --no-auth --output json
+stdout '"code": "usage"'
+stdout 'refusing to serve 0.0.0.0:0 without authentication'
+stdout '"hint": "Remove --no-auth, listen on 127.0.0.1, or add --allow-remote-no-auth."'
+
+# A bad address
+! exec openarch mcp --listen openarch.local
+stderr '^Error: invalid --listen address "openarch.local"'

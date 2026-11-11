@@ -4,8 +4,16 @@ Run an MCP server that exposes the commands as tools
 
 ### Synopsis
 
-Run a Model Context Protocol (MCP) server on stdin and stdout, so that an AI
-agent can install and operate OpenArch with the same commands as the CLI.
+Run a Model Context Protocol (MCP) server, so that an AI agent can install
+and operate OpenArch with the same commands as the CLI.
+
+The server runs on stdin and stdout. With --listen it serves Streamable HTTP
+on host:port instead, at the path /mcp, for remote agents or several
+clients. A port alone means 127.0.0.1, so --listen 8765 is 127.0.0.1:8765.
+It prints its URL, then runs until it is stopped. Every HTTP request needs the header "Authorization: Bearer
+<token>"; 'openarch mcp token' prints the token. --no-auth turns the token
+off. On an address that is not loopback, --no-auth also needs
+--allow-remote-no-auth.
 
 Each tool runs one command with --output json and returns its JSON result.
 A failed command gives an error result with its exit code. Command progress
@@ -35,6 +43,8 @@ openarch mcp [flags]
   openarch mcp --dir my-openarch
   openarch mcp --dir my-openarch --allow-destructive
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
+  openarch mcp --dir my-openarch --listen 8765
+  claude mcp add --transport http openarch http://127.0.0.1:8765/mcp --header "Authorization: Bearer $(openarch mcp token)"
 ```
 
 ### Options
@@ -42,8 +52,11 @@ openarch mcp [flags]
 ```
       --allow-destructive      add the tools that stop services or delete data
       --allow-insecure         let the init tool take the options that turn security off
+      --allow-remote-no-auth   allow --no-auth on an address that is not loopback
   -h, --help                   help for mcp
+      --listen string          serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1
       --max-result-bytes int   cut longer tool results, for models with a small context; 0: no limit (default 16384)
+      --no-auth                serve HTTP without the bearer token
 ```
 
 ### Options inherited from parent commands
@@ -60,4 +73,5 @@ openarch mcp [flags]
 ### SEE ALSO
 
 * [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
+* [openarch mcp token](openarch_mcp_token.md)	 - Print the bearer token of 'openarch mcp --listen'
 
