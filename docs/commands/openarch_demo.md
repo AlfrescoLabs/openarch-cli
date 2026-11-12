@@ -7,10 +7,12 @@ Add sample users and documents that show permission-aware search
 Add sample users and documents that show permission-aware search: the
 same query returns different documents for each user.
 
-'demo users' adds the users alice (group demo-hr) and bob (group demo-finance)
-with generated passwords, and saves a context for each one. OpenArch reads its
-users only at startup, so run it before 'openarch up', or run 'openarch up'
-after it.
+1. 'demo users' adds the users alice (group demo-hr) and bob (group
+   demo-finance) with generated passwords, and saves a context for each one.
+2. 'openarch up' starts OpenArch, or restarts it: it reads its users only at
+   startup.
+3. 'demo load' creates folders and documents under /Demo with different read
+   access. 'demo reset' deletes them.
 
 ```
 openarch demo [flags]
@@ -21,7 +23,9 @@ openarch demo [flags]
 ```
   openarch demo users
   openarch up
-  openarch query "SELECT * FROM SysFile" --context local-alice
+  openarch demo load
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
 ```
 
 ### Options
@@ -44,5 +48,7 @@ openarch demo [flags]
 ### SEE ALSO
 
 * [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
+* [openarch demo load](openarch_demo_load.md)	 - Create the demo folders and documents
+* [openarch demo reset](openarch_demo_reset.md)	 - Delete the demo folders and documents
 * [openarch demo users](openarch_demo_users.md)	 - Add the demo users and a context for each one
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/api"
 	"github.com/AlfrescoLabs/openarch-cli/internal/contexts"
 	"github.com/AlfrescoLabs/openarch-cli/internal/demo"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
@@ -24,17 +25,97 @@ func newDemoCmd(app *App) *cobra.Command {
 		Long: `Add sample users and documents that show permission-aware search: the
 same query returns different documents for each user.
 
-'demo users' adds the users alice (group demo-hr) and bob (group demo-finance)
-with generated passwords, and saves a context for each one. OpenArch reads its
-users only at startup, so run it before 'openarch up', or run 'openarch up'
-after it.`,
+1. 'demo users' adds the users alice (group demo-hr) and bob (group
+   demo-finance) with generated passwords, and saves a context for each one.
+2. 'openarch up' starts OpenArch, or restarts it: it reads its users only at
+   startup.
+3. 'demo load' creates folders and documents under /Demo with different read
+   access. 'demo reset' deletes them.`,
 		Example: `  openarch demo users
   openarch up
-  openarch query "SELECT * FROM SysFile" --context local-alice`,
+  openarch demo load
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(newDemoUsersCmd(app))
+	cmd.AddCommand(newDemoUsersCmd(app), newDemoLoadCmd(app), newDemoResetCmd(app))
+	return cmd
+}
+
+// demoClient returns an admin client for the demo commands, and the group ids
+// of the workspace users file.
+func (a *App) demoClient(cmd *cobra.Command, f *connFlags) (*api.Client, map[string]string, error) {
+	_, _, uf, err := a.usersWorkspace()
+	if err != nil {
+		return nil, nil, err
+	}
+	c, err := a.client(cmd, f)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c, demo.GroupIDs(uf), nil
+}
+
+func newDemoLoadCmd(app *App) *cobra.Command {
+	var f connFlags
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "load",
+		Short: "Create the demo folders and documents",
+		Long: `Create the demo folders and documents under /Demo, as the workspace admin.
+Each folder can be read by one group: Public by every user, HR by demo-hr,
+Finance by demo-finance, and Board by administrators only. The documents have
+metadata only (title and description).
+
+The demo users must exist in OpenArch: run 'openarch demo users', then
+'openarch up'. When /Demo exists, nothing is loaded; --force deletes it first.`,
+		Example: `  openarch demo load
+  openarch demo load --force --output json`,
+		Args: noArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, groups, err := app.demoClient(cmd, &f)
+			if err != nil {
+				return err
+			}
+			res, err := demo.Load(cmd.Context(), c, groups, force)
+			if err != nil {
+				return err
+			}
+			return app.Printer.Print(res)
+		},
+	}
+	f.register(cmd)
+	cmd.Flags().BoolVar(&force, "force", false, "delete /Demo first when it exists")
+	return cmd
+}
+
+func newDemoResetCmd(app *App) *cobra.Command {
+	var f connFlags
+	var yes bool
+	cmd := &cobra.Command{
+		Use:     "reset",
+		Short:   "Delete the demo folders and documents",
+		Long:    "Delete /Demo and everything in it. The demo users stay. Without a terminal, --yes is required.",
+		Example: "  openarch demo reset --yes",
+		Args:    noArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, _, err := app.demoClient(cmd, &f)
+			if err != nil {
+				return err
+			}
+			if err := app.confirm(yes, "Delete "+demo.Root+" and everything in it?"); err != nil {
+				return err
+			}
+			res, err := demo.Reset(cmd.Context(), c)
+			if err != nil {
+				return err
+			}
+			return app.Printer.Print(res)
+		},
+	}
+	f.register(cmd)
+	cmd.Flags().BoolVar(&yes, "yes", false, "do not ask for confirmation")
 	return cmd
 }
 

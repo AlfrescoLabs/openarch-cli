@@ -36,6 +36,31 @@ stdout '^unchanged +alice'
 stdout '^added +bob'
 grep 'username: bob' config/users.yml
 
+# demo load creates the folders and documents as the admin (here on the mock OpenArch)
+env OPENARCH_URL=$MOCK_URL
+env OPENARCH_USER=admin
+env OPENARCH_PASSWORD=$MOCK_PASSWORD
+exec openarch demo load
+stdout 'Loaded 4 folders and 6 documents under /Demo'
+exec openarch documents get /Demo/HR/salary-bands-2026
+stdout 'Salary bands 2026'
+exec openarch demo load --output json
+stdout '"action": "exists"'
+exec openarch demo load --force --output json
+stdout '"action": "loaded"'
+stdout '"/Demo/Board/merger-proposal"'
+
+# demo reset deletes /Demo
+! exec openarch demo reset
+stderr 'needs --yes'
+exec openarch demo reset --yes
+stdout 'Deleted /Demo'
+exec openarch demo reset --yes
+stdout '/Demo does not exist'
+env OPENARCH_URL=
+env OPENARCH_USER=
+env OPENARCH_PASSWORD=
+
 # A context name used by something else is an error
 cd $WORK
 exec openarch init --dir other --context-name clash-alice --non-interactive --memory 4g
