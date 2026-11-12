@@ -100,6 +100,8 @@ The current release is 0.5.2. The commands:
 | `openarch query` | Runs a query and lists the documents found |
 | `openarch documents` | Gets, creates and lists documents, and uploads and downloads their files |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
+| `openarch demo` | Adds sample users and documents that show permission-aware search (`users`, `load`, `reset`). See [Demo](#demo) |
+| `openarch credentials` | Shows the users and passwords of a local workspace |
 | `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
 | `openarch upgrade` | Changes the OpenArch version, then checks the result |
 | `openarch migrate` | Updates `openarch.yaml` to the schema of this release |
@@ -414,6 +416,40 @@ openarch up                                                 # apply the changes
   working.
 - `openarch render` keeps every user and group in the file.
 - These commands work on a workspace only, and not with `--default-users`.
+
+## Demo
+
+OpenArch answers queries with the documents that the caller may read. `openarch demo` shows it with
+two users and a few documents: the same query returns different documents for each user.
+
+```
+openarch init --dir my-openarch
+openarch demo users --dir my-openarch      # alice (group demo-hr) and bob (group demo-finance)
+openarch up --dir my-openarch
+openarch demo load --dir my-openarch       # folders and documents under /Demo
+openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local
+openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
+openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
+```
+
+| Folder | Who can read it | Documents |
+| --- | --- | --- |
+| `/Demo/Public` | every user (group `members`) | Holiday calendar 2026, Office Wi-Fi guide |
+| `/Demo/HR` | group `demo-hr` (alice) | Salary bands 2026, Hiring plan Q1 2027 |
+| `/Demo/Finance` | group `demo-finance` (bob) | Budget forecast 2027 |
+| `/Demo/Board` | administrators only | Merger proposal |
+
+The admin sees 6 documents, alice 4 and bob 3. A query on titles shows it too:
+`"SELECT * FROM SysFile WHERE sys_title LIKE '%2027%'"` gives alice the hiring plan and bob the budget.
+
+- `demo users` generates the passwords, and saves the contexts `<prefix>-alice` and `<prefix>-bob`. The
+  prefix is the name of the workspace context (`--context-name` of `init`, default `local`).
+  OpenArch reads its users only at startup, so run `openarch up` after it.
+- `demo load` works as the workspace admin. When `/Demo` exists it loads nothing; `--force` deletes it
+  first. `demo reset` deletes `/Demo`. The users stay.
+- The documents have metadata only (title and description): OpenArch does not extract text from files.
+- `openarch credentials` shows the admin and the demo users with their passwords, in clear text.
+- Demo users work on a workspace only, and not with `--default-users`.
 
 ## Saved connections
 
