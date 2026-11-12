@@ -84,7 +84,7 @@ The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPEN
 
 ## Commands
 
-The current release is 0.5.2. The commands:
+The current release is 0.6.0. The commands:
 
 | Command | What it does |
 | --- | --- |
