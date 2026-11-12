@@ -9,6 +9,7 @@ the OpenArch health endpoint.
 
 The stack state is healthy, starting, unhealthy or stopped.
 Exit code 0 means healthy. Exit code 4 means any other state.
+With --output json, settings holds the content of openarch.yaml.
 
 ```
 openarch status [flags]

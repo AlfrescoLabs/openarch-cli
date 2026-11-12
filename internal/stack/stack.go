@@ -148,6 +148,8 @@ func GetStatus(ctx context.Context, env Env, w Workspace) (Status, error) {
 	}
 	st := Evaluate(w.Config, cs, api)
 	st.Workspace, st.AdminUser = w.Dir, w.Secrets.AdminUser
+	cfg := w.Config
+	st.Settings = &cfg
 	return st, nil
 }
 

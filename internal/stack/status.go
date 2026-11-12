@@ -55,6 +55,9 @@ type Status struct {
 	API       *APICheck       `json:"api,omitempty"`
 	Endpoints []Endpoint      `json:"endpoints"`
 	AdminUser string          `json:"adminUser,omitempty"`
+	// Settings is the content of openarch.yaml, so that a client can show the
+	// version and the options of the workspace.
+	Settings *workspace.Config `json:"settings,omitempty"`
 	// Command is the CLI command that produced the status, for the text form.
 	Command string `json:"-"`
 }

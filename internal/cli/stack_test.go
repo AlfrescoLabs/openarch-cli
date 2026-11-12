@@ -85,6 +85,17 @@ func TestStatusStoppedExitCode(t *testing.T) {
 	}
 }
 
+func TestStatusJSONHasSettings(t *testing.T) {
+	_, stdout, _ := runStack(t, "", nil, "status", "--output", "json")
+	var st stack.Status
+	if err := json.Unmarshal([]byte(stdout), &st); err != nil {
+		t.Fatalf("stdout is not JSON: %q", stdout)
+	}
+	if st.Settings == nil || st.Settings.Version != workspace.DefaultVersion || st.Settings.Port != 8080 || st.Settings.Memory == "" {
+		t.Errorf("settings = %+v", st.Settings)
+	}
+}
+
 func TestUpDryRun(t *testing.T) {
 	code, stdout, _ := runStack(t, "", errors.New("must not run"), "up", "--dry-run")
 	if code != 0 || !strings.Contains(stdout, "docker compose --env-file .env --env-file .env.local up") {
