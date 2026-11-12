@@ -41,6 +41,9 @@ How to call it from a program or an AI agent:
 - [openarch config set](commands/openarch_config_set.md): Save a remote connection and its password
 - [openarch config use](commands/openarch_config_use.md): Select the current context
 - [openarch config whoami](commands/openarch_config_whoami.md): Show which URL and user a command would use, and where they come from
+- [openarch credentials](commands/openarch_credentials.md): Show the users and passwords of a local workspace
+- [openarch demo](commands/openarch_demo.md): Add sample users and documents that show permission-aware search
+- [openarch demo users](commands/openarch_demo_users.md): Add the demo users and a context for each one
 - [openarch doctor](commands/openarch_doctor.md): Check the prerequisites to run OpenArch
 - [openarch documents](commands/openarch_documents.md): Get, create, list, upload and download documents
 - [openarch documents content](commands/openarch_documents_content.md): Download the file of a document

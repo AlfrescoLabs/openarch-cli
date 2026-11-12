@@ -45,6 +45,8 @@ openarch [flags]
 * [openarch clean](openarch_clean.md)	 - Stop OpenArch and delete its data
 * [openarch completion](openarch_completion.md)	 - Generate the autocompletion script for the specified shell
 * [openarch config](openarch_config.md)	 - Manage saved connections (contexts)
+* [openarch credentials](openarch_credentials.md)	 - Show the users and passwords of a local workspace
+* [openarch demo](openarch_demo.md)	 - Add sample users and documents that show permission-aware search
 * [openarch doctor](openarch_doctor.md)	 - Check the prerequisites to run OpenArch
 * [openarch documents](openarch_documents.md)	 - Get, create, list, upload and download documents
 * [openarch down](openarch_down.md)	 - Stop OpenArch and remove its containers, keeping the data

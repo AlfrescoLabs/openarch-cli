@@ -1,0 +1,53 @@
+# demo users adds two users with generated passwords, and a context for each
+exec openarch init --dir ws --context-name oa --non-interactive --memory 4g
+cd ws
+exec openarch demo users
+stdout '^added +alice +group demo-hr, context oa-alice'
+stdout '^added +bob +group demo-finance, context oa-bob'
+stdout 'Run .openarch up. to apply the change'
+grep 'username: alice' config/users.yml
+grep 'name: demo-hr' config/users.yml
+grep 'name: demo-finance' config/users.yml
+exec openarch config list
+stdout 'oa-alice'
+stdout 'oa-bob'
+
+# credentials shows the admin and the demo users, with their passwords
+exec openarch credentials
+stderr 'clear text'
+stdout '^admin +[A-Za-z0-9]+  \(context oa\)'
+stdout '^alice +[A-Za-z0-9]{20}  \(context oa-alice\)'
+stdout '^bob +[A-Za-z0-9]{20}  \(context oa-bob\)'
+
+# Running demo users again keeps the users and the passwords
+exec openarch credentials --output json
+cp stdout first.json
+exec openarch demo users --output json
+stdout '"action": "unchanged"'
+stdout '"restartNeeded": false'
+! stdout '"action": "added"'
+exec openarch credentials --output json
+cmp stdout first.json
+
+# A deleted demo user is added again, with a new password
+exec openarch users delete bob --yes
+exec openarch demo users
+stdout '^unchanged +alice'
+stdout '^added +bob'
+grep 'username: bob' config/users.yml
+
+# A context name used by something else is an error
+cd $WORK
+exec openarch init --dir other --context-name clash-alice --non-interactive --memory 4g
+! exec openarch demo users --dir ws --context-prefix clash
+stderr 'context "clash-alice" already exists and points somewhere else'
+
+# A workspace with the bundled users cannot have demo users
+exec openarch init --dir bundled --default-users --non-interactive --memory 4g
+! exec openarch demo users --dir bundled
+stderr 'bundled in the OpenArch image'
+
+# credentials needs a workspace
+mkdir empty
+! exec openarch credentials --dir empty
+stderr 'openarch init'
