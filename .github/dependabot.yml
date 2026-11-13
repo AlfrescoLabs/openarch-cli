@@ -7,6 +7,10 @@ updates:
     groups:
       go-modules:
         patterns: ["*"]
+    ignore:
+      # pflag 1.1 prints every boolean flag as --flag[=true|false] in the help.
+      - dependency-name: github.com/spf13/pflag
+        versions: ["1.1.x"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
