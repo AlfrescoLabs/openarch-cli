@@ -1,0 +1,35 @@
+# demo load --embeddings stores a vector for each demo document, and
+# query --semantic finds them (here on the mock OpenArch and a mock model API)
+exec openarch init --dir ws --context-name oa --non-interactive --memory 4g
+cd ws
+exec openarch demo users
+env OPENARCH_URL=$MOCK_URL
+env OPENARCH_USER=admin
+env OPENARCH_PASSWORD=$MOCK_PASSWORD
+exec openarch demo load --embeddings --model-url $MOCK_URL/v1
+stdout 'Loaded 6 folders and 10 documents under /Demo'
+stdout 'Stored a vector of type ai-mxbai-embed-large for 10 documents'
+exec openarch documents get /Demo/HR/salary-bands-2026/_e_ai-mxbai-embed-large --output json
+stdout '"sys_primaryType": "SysEmbeddings"'
+exec openarch documents get /Demo/HR/salary-bands-2026 --output json
+stdout 'SysHasEmbeddings'
+
+exec openarch query --semantic 'pay for each job level' --model-url $MOCK_URL/v1
+stdout '^0\.900  \S+  Salary bands 2026'
+exec openarch query --semantic 'pay' --model-url $MOCK_URL/v1 --output json
+stdout '"embeddingType": "ai-mxbai-embed-large"'
+stdout '"totalCount": 10'
+
+# Loading again with --force stores the vectors again
+exec openarch demo load --embeddings --force --model-url $MOCK_URL/v1 --output json
+stdout '"embeddings": 10'
+
+# Flags that only work for a plain query are refused
+! exec openarch query --semantic 'pay' --sort sys_title --model-url $MOCK_URL/v1
+stderr '--sort does not work with --semantic'
+! exec openarch query
+stderr 'needs 1 argument'
+
+# A model API that does not answer gives a hint
+! exec openarch query --semantic 'pay' --model-url http://127.0.0.1:1/v1
+stderr 'docker desktop enable model-runner --tcp 12434'

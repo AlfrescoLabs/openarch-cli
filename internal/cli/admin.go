@@ -22,8 +22,10 @@ import (
 func newQueryCmd(app *App) *cobra.Command {
 	var f connFlags
 	var o api.QueryOptions
+	var m modelFlags
+	var semantic string
 	cmd := &cobra.Command{
-		Use:   "query <query>",
+		Use:   "query [<query>]",
 		Short: "Run a query and list the documents found",
 		Long: `Run a query with POST /api/query and list the documents found.
 
@@ -34,12 +36,50 @@ SELECT sys_name FROM SysFile, finds no documents.
 Use --syntax expr for the expression syntax.
 
 New documents can take a moment to reach the search index. --sync waits for it.
-With --output json, the result is the server response as is.`,
+With --output json, the result is the server response as is.
+
+--semantic finds the documents nearest in meaning to a text: the text becomes a
+vector with a local model on Docker Model Runner, and POST /api/query/embeddings
+compares it with the stored vectors of the same model (see 'openarch demo load
+--embeddings'). The query, when given, selects the documents to search. Only
+documents the caller may read are found.`,
 		Example: `  openarch query "SELECT * FROM SysContent"
   openarch query "SELECT * FROM SysFolder" --limit 50 --sort sys_title
-  openarch query "SELECT * FROM SysContent" --sync --total --output json`,
-		Args: exactArgs(1),
+  openarch query "SELECT * FROM SysContent" --sync --total --output json
+  openarch query --semantic "How much is the pay for each job level?"
+  openarch query --semantic "office move" "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --limit 3`,
+		Args: func(cmd *cobra.Command, args []string) error {
+			if semantic != "" {
+				return maxArgs(1)(cmd, args)
+			}
+			return exactArgs(1)(cmd, args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if semantic != "" {
+				for _, name := range []string{"offset", "sort", "syntax", "sync", "total"} {
+					if cmd.Flags().Changed(name) {
+						return output.Usage("--"+name+" does not work with --semantic", "Use the query argument to select the documents, and --limit.")
+					}
+				}
+				c, err := app.client(cmd, &f)
+				if err != nil {
+					return err
+				}
+				v, err := m.embedder()(cmd.Context(), []string{semantic})
+				if err != nil {
+					return err
+				}
+				typ := api.EmbeddingType(m.model)
+				query := ""
+				if len(args) == 1 {
+					query = args[0]
+				}
+				hits, total, err := c.SearchEmbeddings(cmd.Context(), v[0], typ, query, o.Limit)
+				if err != nil {
+					return err
+				}
+				return app.Printer.Print(SemanticResult{Text: semantic, EmbeddingType: typ, Hits: hits, TotalCount: total})
+			}
 			if o.Syntax != "" && o.Syntax != "hxql" && o.Syntax != "expr" {
 				return output.Usage(fmt.Sprintf("invalid syntax %q", o.Syntax), "Use hxql or expr.")
 			}
@@ -66,7 +106,33 @@ With --output json, the result is the server response as is.`,
 	fl.StringVar(&o.Syntax, "syntax", "", "query syntax: hxql (default) or expr")
 	fl.BoolVar(&o.Sync, "sync", false, "wait until the search index has the latest changes")
 	fl.BoolVar(&o.Total, "total", false, "count every match, not only up to the server limit")
+	fl.StringVar(&semantic, "semantic", "", "find the documents nearest in meaning to this text")
+	m.register(cmd)
 	return cmd
+}
+
+// SemanticResult is the result of 'query --semantic'.
+type SemanticResult struct {
+	Text          string             `json:"text"`
+	EmbeddingType string             `json:"embeddingType"`
+	Hits          []api.EmbeddingHit `json:"hits"`
+	TotalCount    int64              `json:"totalCount"`
+}
+
+func (r SemanticResult) WriteText(w io.Writer) error {
+	var b strings.Builder
+	if len(r.Hits) == 0 {
+		fmt.Fprintf(&b, "No documents with vectors of type %s found. Store them with 'openarch demo load --embeddings'.\n", r.EmbeddingType)
+	}
+	for _, h := range r.Hits {
+		text := h.Text
+		if len(text) > 70 {
+			text = text[:67] + "..."
+		}
+		fmt.Fprintf(&b, "%.3f  %s  %s\n", h.Score, h.DocID, text)
+	}
+	_, err := io.WriteString(w, b.String())
+	return err
 }
 
 // selectsColumns reports whether an HxQL query names columns instead of SELECT *.

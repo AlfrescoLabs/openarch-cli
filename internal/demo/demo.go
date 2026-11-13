@@ -75,6 +75,10 @@ type Doc struct {
 // Path is the path of the document.
 func (d Doc) Path() string { return d.Folder + "/" + d.Name }
 
+// EmbeddingText is the text the vector of the document is made from: OpenArch
+// has no text of the document other than its metadata.
+func (d Doc) EmbeddingText() string { return d.Title + ". " + d.Description }
+
 // Data is the demo data. fixture.yaml is part of the binary, so a parse error
 // is a build error that the tests catch.
 var Data = mustParse(fixtureYAML)
@@ -148,6 +152,20 @@ type Client interface {
 	DeleteDocument(ctx context.Context, id string) error
 	GroupExists(ctx context.Context, id string) (bool, error)
 	UserExists(ctx context.Context, id string) (bool, error)
+	StoreEmbeddings(ctx context.Context, doc api.Document, typ string, rows []api.EmbeddingRow) error
+}
+
+// Embedder makes one vector per text.
+type Embedder func(ctx context.Context, texts []string) ([][]float32, error)
+
+// LoadOptions are the options of Load.
+type LoadOptions struct {
+	// Force deletes an existing Root first.
+	Force bool
+	// Embed, when set, makes a vector for each document, stored with type
+	// EmbeddingType, so that a semantic query can find it.
+	Embed         Embedder
+	EmbeddingType string
 }
 
 // IDs maps the user and group names of the users file to their ids.
@@ -164,6 +182,9 @@ type Result struct {
 	Folders   int      `json:"folders"`
 	Documents int      `json:"documents"`
 	Created   []string `json:"created,omitempty"`
+	// Embeddings is the number of documents that got a vector.
+	Embeddings    int    `json:"embeddings"`
+	EmbeddingType string `json:"embeddingType,omitempty"`
 }
 
 func (r Result) WriteText(w io.Writer) error {
@@ -174,6 +195,11 @@ func (r Result) WriteText(w io.Writer) error {
 			"Run this query with the context of each demo user (see 'openarch credentials'), and compare:\n"+
 			"  openarch query \"SELECT * FROM SysFile WHERE sys_path STARTSWITH '%s/'\" --context <context>\n",
 			r.Folders, r.Documents, r.Root, r.Root)
+		if r.Embeddings > 0 {
+			msg += fmt.Sprintf("Stored a vector of type %s for %d documents. A semantic query:\n"+
+				"  openarch query --semantic \"How much is the pay for each job level?\" --context <context>\n",
+				r.EmbeddingType, r.Embeddings)
+		}
 	case "exists":
 		msg = fmt.Sprintf("%s exists, nothing loaded. Use --force to load it again.\n", r.Root)
 	case "deleted":
@@ -186,15 +212,30 @@ func (r Result) WriteText(w io.Writer) error {
 }
 
 // Load creates the demo folders and documents as an administrator. ids comes
-// from the users file. With force, an existing Root is deleted first.
-func Load(ctx context.Context, c Client, ids IDs, force bool) (Result, error) {
+// from the users file.
+func Load(ctx context.Context, c Client, ids IDs, opts LoadOptions) (Result, error) {
 	res := Result{Root: Root}
 	if err := checkPrincipals(ctx, c, ids); err != nil {
 		return res, err
 	}
+	// The vectors are made first, so that a missing model changes nothing.
+	var vectors [][]float32
+	if opts.Embed != nil {
+		texts := make([]string, len(Data.Documents))
+		for i, d := range Data.Documents {
+			texts[i] = d.EmbeddingText()
+		}
+		var err error
+		if vectors, err = opts.Embed(ctx, texts); err != nil {
+			return res, err
+		}
+		if len(vectors) != len(texts) {
+			return res, fmt.Errorf("%d vectors for %d documents", len(vectors), len(texts))
+		}
+	}
 	doc, err := c.GetDocument(ctx, Root)
 	switch {
-	case err == nil && !force:
+	case err == nil && !opts.Force:
 		res.Action = "exists"
 		return res, nil
 	case err == nil:
@@ -204,37 +245,47 @@ func Load(ctx context.Context, c Client, ids IDs, force bool) (Result, error) {
 	case !errors.Is(err, api.ErrNotFound):
 		return res, err
 	}
-	create := func(p string, body map[string]any) error {
+	create := func(p string, body map[string]any) (api.Document, error) {
 		data, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return api.Document{}, err
 		}
 		d, err := c.CreateDocument(ctx, path.Dir(p), data)
 		if err != nil {
-			return err
+			return api.Document{}, err
 		}
 		res.Created = append(res.Created, d.Path)
-		return nil
+		return d, nil
 	}
 	// Folders are listed parents first.
 	for _, f := range Data.Folders {
 		name := path.Base(f.Path)
 		body := map[string]any{"sys_primaryType": "SysFolder", "sys_name": name, "sys_title": name}
 		setACL(body, f.ACL, f.BlockInheritance, ids)
-		if err := create(f.Path, body); err != nil {
+		if _, err := create(f.Path, body); err != nil {
 			return res, err
 		}
 		if f.Path != Root {
 			res.Folders++
 		}
 	}
-	for _, d := range Data.Documents {
+	for i, d := range Data.Documents {
 		body := map[string]any{"sys_primaryType": "SysFile", "sys_name": d.Name, "sys_title": d.Title, "sys_description": d.Description}
 		setACL(body, d.ACL, d.BlockInheritance, ids)
-		if err := create(d.Path(), body); err != nil {
+		created, err := create(d.Path(), body)
+		if err != nil {
 			return res, err
 		}
 		res.Documents++
+		if vectors != nil {
+			// One vector per document, so the document id makes the row id unique.
+			row := api.EmbeddingRow{ID: created.ID + "/0", Text: d.EmbeddingText(), Vector: vectors[i]}
+			if err := c.StoreEmbeddings(ctx, created, opts.EmbeddingType, []api.EmbeddingRow{row}); err != nil {
+				return res, err
+			}
+			res.Embeddings++
+			res.EmbeddingType = opts.EmbeddingType
+		}
 	}
 	res.Action = "loaded"
 	return res, nil

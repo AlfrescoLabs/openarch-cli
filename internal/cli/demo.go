@@ -61,7 +61,8 @@ func (a *App) demoClient(cmd *cobra.Command, f *connFlags) (*api.Client, demo.ID
 
 func newDemoLoadCmd(app *App) *cobra.Command {
 	var f connFlags
-	var force bool
+	var m modelFlags
+	var force, embeddings bool
 	cmd := &cobra.Command{
 		Use:   "load",
 		Short: "Create the demo folders and documents",
@@ -72,17 +73,27 @@ entries: Public/Facilities blocks what it inherits and gives bob access, a
 Finance document adds alice, and another one gave alice access that has ended.
 The documents have metadata only (title and description).
 
+--embeddings also stores a vector for each document, made from its title and
+description with a local model on Docker Model Runner, so that
+'openarch query --semantic' finds documents by meaning. OpenArch keeps the
+vector with the access entries of its document.
+
 The demo users must exist in OpenArch: run 'openarch demo users', then
 'openarch up'. When /Demo exists, nothing is loaded; --force deletes it first.`,
 		Example: `  openarch demo load
-  openarch demo load --force --output json`,
+  openarch demo load --force --output json
+  openarch demo load --force --embeddings`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, ids, err := app.demoClient(cmd, &f)
 			if err != nil {
 				return err
 			}
-			res, err := demo.Load(cmd.Context(), c, ids, force)
+			opts := demo.LoadOptions{Force: force}
+			if embeddings {
+				opts.Embed, opts.EmbeddingType = m.embedder(), api.EmbeddingType(m.model)
+			}
+			res, err := demo.Load(cmd.Context(), c, ids, opts)
 			if err != nil {
 				return err
 			}
@@ -91,6 +102,8 @@ The demo users must exist in OpenArch: run 'openarch demo users', then
 	}
 	f.register(cmd)
 	cmd.Flags().BoolVar(&force, "force", false, "delete /Demo first when it exists")
+	cmd.Flags().BoolVar(&embeddings, "embeddings", false, "also store a vector for each document, made with a local model")
+	m.register(cmd)
 	return cmd
 }
 

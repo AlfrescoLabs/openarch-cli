@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path"
+	"sort"
 	"strings"
 	"sync/atomic"
 )
@@ -53,6 +55,19 @@ func newMockOpenArch() *httptest.Server {
 			writeJSON(w, http.StatusOK, map[string]string{"version": "1.0.90"})
 			return
 		}
+		// A stand-in for the embeddings API of Docker Model Runner, which has no login.
+		if r.URL.Path == "/v1/embeddings" {
+			var in struct {
+				Input []string `json:"input"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			data := make([]map[string]any, len(in.Input))
+			for i := range in.Input {
+				data[i] = map[string]any{"index": i, "embedding": []float32{1, float32(i), 0}}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"data": data})
+			return
+		}
 		if u, p, ok := r.BasicAuth(); !ok || u != mockUser || p != mockPassword {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -66,6 +81,24 @@ func newMockOpenArch() *httptest.Server {
 		case strings.HasPrefix(r.URL.Path, "/api/group/"):
 			// Every group is known, as after 'openarch up' with the users file.
 			writeJSON(w, http.StatusOK, map[string]string{"id": strings.TrimPrefix(r.URL.Path, "/api/group/"), "name": "group"})
+		case r.URL.Path == "/api/upload" && r.Method == http.MethodPost:
+			writeJSON(w, http.StatusCreated, map[string]string{"id": fmt.Sprintf("up%d", mockSeq.Add(1))})
+		case r.URL.Path == "/api/query/embeddings" && r.Method == http.MethodPost:
+			// One hit per document with stored embeddings, in path order.
+			var paths []string
+			for p, d := range docs {
+				if d["sys_primaryType"] == "SysEmbeddings" {
+					paths = append(paths, p)
+				}
+			}
+			sort.Strings(paths)
+			hits := []map[string]any{}
+			for _, p := range paths {
+				parent := docs[path.Dir(p)]
+				hits = append(hits, map[string]any{"sysembed_id": docs[p]["sys_id"], "sysembed_docId": parent["sys_id"],
+					"sysembed_score": 0.9, "sysembed_text": parent["sys_title"]})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"embeddings": hits, "count": len(hits), "totalCount": len(hits)})
 		case r.URL.Path == "/api/query" && r.Method == http.MethodPost:
 			var q struct {
 				Query string `json:"query"`

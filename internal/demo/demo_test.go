@@ -48,9 +48,11 @@ type fakeClient struct {
 	known bool
 	// unknownUser is a user id that OpenArch does not know.
 	unknownUser string
-	exists      bool
-	deleted     []string
-	bodies      map[string]map[string]any
+	// stored are the embeddings, by "<document path> <type>".
+	stored  map[string][]api.EmbeddingRow
+	exists  bool
+	deleted []string
+	bodies  map[string]map[string]any
 }
 
 func (c *fakeClient) GetDocument(_ context.Context, ref string) (api.Document, error) {
@@ -67,7 +69,11 @@ func (c *fakeClient) CreateDocument(_ context.Context, parent string, body []byt
 	}
 	path := strings.TrimSuffix(parent, "/") + "/" + m["sys_name"].(string)
 	c.bodies[path] = m
-	return api.Document{}, nil
+	var d api.Document
+	if err := json.Unmarshal([]byte(`{"sys_id":"id-`+path+`","sys_path":"`+path+`"}`), &d); err != nil {
+		return api.Document{}, err
+	}
+	return d, nil
 }
 
 func (c *fakeClient) DeleteDocument(_ context.Context, id string) error {
@@ -79,6 +85,14 @@ func (c *fakeClient) GroupExists(context.Context, string) (bool, error) { return
 
 func (c *fakeClient) UserExists(_ context.Context, id string) (bool, error) {
 	return c.known && id != c.unknownUser, nil
+}
+
+func (c *fakeClient) StoreEmbeddings(_ context.Context, doc api.Document, typ string, rows []api.EmbeddingRow) error {
+	if c.stored == nil {
+		c.stored = map[string][]api.EmbeddingRow{}
+	}
+	c.stored[doc.Path+" "+typ] = rows
+	return nil
 }
 
 func ids() IDs {
@@ -99,7 +113,7 @@ func aclOf(t *testing.T, c *fakeClient, p string) string {
 
 func TestLoad(t *testing.T) {
 	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
-	res, err := Load(context.Background(), c, ids(), false)
+	res, err := Load(context.Background(), c, ids(), LoadOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,11 +144,11 @@ func TestLoad(t *testing.T) {
 
 func TestLoadExistsAndForce(t *testing.T) {
 	c := &fakeClient{known: true, exists: true, bodies: map[string]map[string]any{}}
-	res, err := Load(context.Background(), c, ids(), false)
+	res, err := Load(context.Background(), c, ids(), LoadOptions{})
 	if err != nil || res.Action != "exists" || len(c.bodies) != 0 {
 		t.Errorf("result = %+v, err = %v, created %d", res, err, len(c.bodies))
 	}
-	res, err = Load(context.Background(), c, ids(), true)
+	res, err = Load(context.Background(), c, ids(), LoadOptions{Force: true})
 	if err != nil || res.Action != "loaded" || len(c.deleted) != 1 {
 		t.Errorf("result = %+v, err = %v, deleted %v", res, err, c.deleted)
 	}
@@ -144,22 +158,22 @@ func TestLoadNeedsPrincipals(t *testing.T) {
 	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
 	missingGroup := ids()
 	delete(missingGroup.Groups, "demo-finance")
-	if _, err := Load(context.Background(), c, missingGroup, false); err == nil || !strings.Contains(err.Error(), "group demo-finance is not in") {
+	if _, err := Load(context.Background(), c, missingGroup, LoadOptions{}); err == nil || !strings.Contains(err.Error(), "group demo-finance is not in") {
 		t.Errorf("err = %v", err)
 	}
 	missingUser := ids()
 	delete(missingUser.Users, "bob")
-	if _, err := Load(context.Background(), c, missingUser, false); err == nil || !strings.Contains(err.Error(), "user bob is not in") {
+	if _, err := Load(context.Background(), c, missingUser, LoadOptions{}); err == nil || !strings.Contains(err.Error(), "user bob is not in") {
 		t.Errorf("err = %v", err)
 	}
 	var oerr *output.Error
 	c.unknownUser = "alice-id"
-	if _, err := Load(context.Background(), c, ids(), false); !errors.As(err, &oerr) || !strings.Contains(oerr.Message, "user alice") || !strings.Contains(oerr.Hint, "openarch up") {
+	if _, err := Load(context.Background(), c, ids(), LoadOptions{}); !errors.As(err, &oerr) || !strings.Contains(oerr.Message, "user alice") || !strings.Contains(oerr.Hint, "openarch up") {
 		t.Errorf("err = %v", err)
 	}
 	c.unknownUser = ""
 	c.known = false
-	if _, err := Load(context.Background(), c, ids(), false); !errors.As(err, &oerr) || !strings.Contains(oerr.Hint, "openarch up") {
+	if _, err := Load(context.Background(), c, ids(), LoadOptions{}); !errors.As(err, &oerr) || !strings.Contains(oerr.Hint, "openarch up") {
 		t.Errorf("err = %v", err)
 	}
 	if len(c.bodies) != 0 {
@@ -175,5 +189,48 @@ func TestReset(t *testing.T) {
 	c.exists = true
 	if res, err := Reset(context.Background(), c); err != nil || res.Action != "deleted" || len(c.deleted) != 1 {
 		t.Errorf("result = %+v, err = %v", res, err)
+	}
+}
+
+func TestLoadEmbeddings(t *testing.T) {
+	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
+	var texts []string
+	embed := func(_ context.Context, in []string) ([][]float32, error) {
+		texts = in
+		out := make([][]float32, len(in))
+		for i := range in {
+			out[i] = []float32{float32(i)}
+		}
+		return out, nil
+	}
+	res, err := Load(context.Background(), c, ids(), LoadOptions{Embed: embed, EmbeddingType: "ai-model"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Embeddings != 10 || res.EmbeddingType != "ai-model" || len(c.stored) != 10 {
+		t.Errorf("result = %+v, stored %d", res, len(c.stored))
+	}
+	rows := c.stored["/Demo/HR/salary-bands-2026 ai-model"]
+	if len(rows) != 1 || !strings.HasPrefix(rows[0].Text, "Salary bands 2026. ") || len(texts) != 10 {
+		t.Errorf("rows = %+v", rows)
+	}
+	// OpenArch keeps one vector per row id and type, so the ids must differ between documents.
+	seen := map[string]bool{}
+	for _, rs := range c.stored {
+		if seen[rs[0].ID] {
+			t.Errorf("row id %q is used twice", rs[0].ID)
+		}
+		seen[rs[0].ID] = true
+	}
+}
+
+func TestLoadEmbeddingsFailFirst(t *testing.T) {
+	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
+	embed := func(context.Context, []string) ([][]float32, error) { return nil, errors.New("model not pulled") }
+	if _, err := Load(context.Background(), c, ids(), LoadOptions{Embed: embed, EmbeddingType: "t"}); err == nil {
+		t.Fatal("no error")
+	}
+	if len(c.bodies) != 0 {
+		t.Errorf("created %d documents before the vectors failed", len(c.bodies))
 	}
 }

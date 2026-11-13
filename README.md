@@ -355,6 +355,8 @@ openarch documents content /projects/report.pdf --out report.pdf
 - Full-text queries (`WHERE sys_fulltext = 'word'`) work only on the search index, so do not use `--sync`
   with them. They find words in the name, title and description, not inside uploaded files: OpenArch
   stores files but does not extract their text.
+- `query --semantic "<text>"` finds documents by meaning, with vectors made by a local model. See
+  "Semantic search" under "Demo".
 - `documents content` checks the SHA-256 of the download against the digest that OpenArch stored.
 - With `--output json`, documents and query results are the server responses as they are.
 
@@ -452,14 +454,40 @@ Each document description ends with a reference code such as `oafx-01-hk4q`. It 
 can check that a user never gets the code of a document they may not read.
 
 - `demo users` generates the passwords, and saves the contexts `<prefix>-alice`, `<prefix>-bob` and
-  `<prefix>-carol`. The
-  prefix is the name of the workspace context (`--context-name` of `init`, default `local`).
-  OpenArch reads its users only at startup, so run `openarch up` after it.
+  `<prefix>-carol`. The prefix is the name of the workspace context (`--context-name` of `init`, default
+  `local`). OpenArch reads its users only at startup, so run `openarch up` after it.
 - `demo load` works as the workspace admin. When `/Demo` exists it loads nothing; `--force` deletes it
   first. `demo reset` deletes `/Demo`. The users stay.
 - The documents have metadata only (title and description): OpenArch does not extract text from files.
 - `openarch credentials` shows the admin and the demo users with their passwords, in clear text.
 - Demo users work on a workspace only, and not with `--default-users`.
+
+### Semantic search
+
+OpenArch stores vectors and searches them, but it does not compute them. With `--embeddings`, `demo load`
+makes one vector per document from its title and description, with a local model on Docker Model Runner,
+and stores it in OpenArch. `query --semantic` turns a question into a vector with the same model, and
+finds the nearest documents that the caller may read.
+
+```
+docker desktop enable model-runner --tcp 12434
+docker model pull ai/mxbai-embed-large
+openarch demo load --force --embeddings
+openarch query --semantic "How much is the pay for each job level?" --context local-alice
+openarch query --semantic "How much is the pay for each job level?" --context local-bob
+```
+
+alice gets the salary bands first. bob gets other documents: he may not read the salary bands, and OpenArch
+leaves them out of his results. The same holds for the counts.
+
+- The default model is `ai/mxbai-embed-large`. `--model` picks another one, and `--model-url` another
+  OpenAI-compatible API. OpenArch takes vectors of at most 1024 dimensions. A question must use the model
+  that made the stored vectors: vectors of other models are not compared.
+- A vector has the read access of its document. When the access entries of the document change, the
+  vector follows.
+- New vectors reach the search index a few seconds after `demo load`.
+- The query argument of `query --semantic`, when given, selects the documents to search, for example
+  `"SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/HR/'"`.
 
 ## Saved connections
 
