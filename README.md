@@ -420,29 +420,39 @@ openarch up                                                 # apply the changes
 ## Demo
 
 OpenArch answers queries with the documents that the caller may read. `openarch demo` shows it with
-two users and a few documents: the same query returns different documents for each user.
+three users and ten documents: the same query returns different documents for each user.
 
 ```
 openarch init --dir my-openarch
-openarch demo users --dir my-openarch      # alice (group demo-hr) and bob (group demo-finance)
+openarch demo users --dir my-openarch      # alice (group demo-hr), bob (group demo-finance), carol
 openarch up --dir my-openarch
 openarch demo load --dir my-openarch       # folders and documents under /Demo
 openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local
 openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
 openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
+openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol
 ```
+
+All three users are in the group `members`. carol is in no other group.
 
 | Folder | Who can read it | Documents |
 | --- | --- | --- |
 | `/Demo/Public` | every user (group `members`) | Holiday calendar 2026, Office Wi-Fi guide |
+| `/Demo/Public/Facilities` | bob only: it blocks what it inherits | Office move plan |
 | `/Demo/HR` | group `demo-hr` (alice) | Salary bands 2026, Hiring plan Q1 2027 |
-| `/Demo/Finance` | group `demo-finance` (bob) | Budget forecast 2027 |
+| `/Demo/HR/Reviews` | inherits from `/Demo/HR` | Review calendar 2027 |
+| `/Demo/Finance` | group `demo-finance` (bob) | Budget forecast 2027, Travel policy 2027 (also alice), Contractor rates 2027 (alice's access ended on 2026-01-01) |
 | `/Demo/Board` | administrators only | Merger proposal |
 
-The admin sees 6 documents, alice 4 and bob 3. A query on titles shows it too:
-`"SELECT * FROM SysFile WHERE sys_title LIKE '%2027%'"` gives alice the hiring plan and bob the budget.
+The admin sees 10 documents, alice 6, bob 6 and carol 2. A query on titles shows it too:
+`"SELECT * FROM SysFile WHERE sys_title LIKE '%2027%'"` gives alice the hiring plan, the review calendar
+and the travel policy, bob the budget, the travel policy and the contractor rates, and carol nothing.
 
-- `demo users` generates the passwords, and saves the contexts `<prefix>-alice` and `<prefix>-bob`. The
+Each document description ends with a reference code such as `oafx-01-hk4q`. It is unique, so a test
+can check that a user never gets the code of a document they may not read.
+
+- `demo users` generates the passwords, and saves the contexts `<prefix>-alice`, `<prefix>-bob` and
+  `<prefix>-carol`. The
   prefix is the name of the workspace context (`--context-name` of `init`, default `local`).
   OpenArch reads its users only at startup, so run `openarch up` after it.
 - `demo load` works as the workspace admin. When `/Demo` exists it loads nothing; `--force` deletes it

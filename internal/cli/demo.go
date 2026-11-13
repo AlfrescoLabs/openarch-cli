@@ -25,8 +25,9 @@ func newDemoCmd(app *App) *cobra.Command {
 		Long: `Add sample users and documents that show permission-aware search: the
 same query returns different documents for each user.
 
-1. 'demo users' adds the users alice (group demo-hr) and bob (group
-   demo-finance) with generated passwords, and saves a context for each one.
+1. 'demo users' adds the users alice (group demo-hr), bob (group
+   demo-finance) and carol (no extra group) with generated passwords, and
+   saves a context for each one.
 2. 'openarch up' starts OpenArch, or restarts it: it reads its users only at
    startup.
 3. 'demo load' creates folders and documents under /Demo with different read
@@ -35,7 +36,8 @@ same query returns different documents for each user.
   openarch up
   openarch demo load
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
-  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob`,
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
@@ -43,18 +45,18 @@ same query returns different documents for each user.
 	return cmd
 }
 
-// demoClient returns an admin client for the demo commands, and the group ids
-// of the workspace users file.
-func (a *App) demoClient(cmd *cobra.Command, f *connFlags) (*api.Client, map[string]string, error) {
+// demoClient returns an admin client for the demo commands, and the user and
+// group ids of the workspace users file.
+func (a *App) demoClient(cmd *cobra.Command, f *connFlags) (*api.Client, demo.IDs, error) {
 	_, _, uf, err := a.usersWorkspace()
 	if err != nil {
-		return nil, nil, err
+		return nil, demo.IDs{}, err
 	}
 	c, err := a.client(cmd, f)
 	if err != nil {
-		return nil, nil, err
+		return nil, demo.IDs{}, err
 	}
-	return c, demo.GroupIDs(uf), nil
+	return c, demo.IDsOf(uf), nil
 }
 
 func newDemoLoadCmd(app *App) *cobra.Command {
@@ -64,9 +66,11 @@ func newDemoLoadCmd(app *App) *cobra.Command {
 		Use:   "load",
 		Short: "Create the demo folders and documents",
 		Long: `Create the demo folders and documents under /Demo, as the workspace admin.
-Each folder can be read by one group: Public by every user, HR by demo-hr,
-Finance by demo-finance, and Board by administrators only. The documents have
-metadata only (title and description).
+Public can be read by every user, HR by demo-hr, Finance by demo-finance, and
+Board by administrators only. Some folders and documents have their own access
+entries: Public/Facilities blocks what it inherits and gives bob access, a
+Finance document adds alice, and another one gave alice access that has ended.
+The documents have metadata only (title and description).
 
 The demo users must exist in OpenArch: run 'openarch demo users', then
 'openarch up'. When /Demo exists, nothing is loaded; --force deletes it first.`,
@@ -74,11 +78,11 @@ The demo users must exist in OpenArch: run 'openarch demo users', then
   openarch demo load --force --output json`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, groups, err := app.demoClient(cmd, &f)
+			c, ids, err := app.demoClient(cmd, &f)
 			if err != nil {
 				return err
 			}
-			res, err := demo.Load(cmd.Context(), c, groups, force)
+			res, err := demo.Load(cmd.Context(), c, ids, force)
 			if err != nil {
 				return err
 			}
@@ -122,8 +126,9 @@ func newDemoResetCmd(app *App) *cobra.Command {
 // DemoUser is a demo user in the result of 'demo users'. It never has the password.
 type DemoUser struct {
 	Username string `json:"username"`
-	Group    string `json:"group"`
-	Context  string `json:"context"`
+	// Groups are the groups of the user other than members.
+	Groups  []string `json:"groups"`
+	Context string   `json:"context"`
 	// Action is "added", "updated" or "unchanged".
 	Action string `json:"action"`
 }
@@ -138,7 +143,11 @@ type DemoUsers struct {
 func (r DemoUsers) WriteText(w io.Writer) error {
 	var b strings.Builder
 	for _, u := range r.Users {
-		fmt.Fprintf(&b, "%-9s  %-5s  group %s, context %s\n", u.Action, u.Username, u.Group, u.Context)
+		groups := "no extra group"
+		if len(u.Groups) > 0 {
+			groups = "group " + strings.Join(u.Groups, ", ")
+		}
+		fmt.Fprintf(&b, "%-9s  %-5s  %s, context %s\n", u.Action, u.Username, groups, u.Context)
 	}
 	if r.Restart {
 		b.WriteString("Run 'openarch up' to apply the change: OpenArch reads its users at startup.\n")
@@ -153,8 +162,8 @@ func newDemoUsersCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "users",
 		Short: "Add the demo users and a context for each one",
-		Long: `Add the demo users alice and bob to config/users.yml, with generated
-passwords. Each user gets a context named <prefix>-<user>, with the password in
+		Long: `Add the demo users alice, bob and carol to config/users.yml, with
+generated passwords. Each user gets a context named <prefix>-<user>, with the password in
 the credential store, for use with --context.
 
 The prefix is the name of the workspace context, for example local. A user
@@ -232,7 +241,7 @@ again. Workspaces with the users bundled in the OpenArch image
 				ctxs.Contexts[names[u.Name]] = contexts.Context{Endpoints: map[string]contexts.Endpoint{
 					contexts.SystemOpenArch: {URL: url, Username: u.Name},
 				}}
-				res.Users = append(res.Users, DemoUser{Username: u.Name, Group: u.Group, Context: names[u.Name], Action: action})
+				res.Users = append(res.Users, DemoUser{Username: u.Name, Groups: u.ExtraGroups(), Context: names[u.Name], Action: action})
 			}
 			if res.Restart {
 				if err := users.Save(dir, f); err != nil {

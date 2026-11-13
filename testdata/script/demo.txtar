@@ -1,16 +1,19 @@
-# demo users adds two users with generated passwords, and a context for each
+# demo users adds three users with generated passwords, and a context for each
 exec openarch init --dir ws --context-name oa --non-interactive --memory 4g
 cd ws
 exec openarch demo users
 stdout '^added +alice +group demo-hr, context oa-alice'
 stdout '^added +bob +group demo-finance, context oa-bob'
+stdout '^added +carol +no extra group, context oa-carol'
 stdout 'Run .openarch up. to apply the change'
 grep 'username: alice' config/users.yml
+grep 'username: carol' config/users.yml
 grep 'name: demo-hr' config/users.yml
 grep 'name: demo-finance' config/users.yml
 exec openarch config list
 stdout 'oa-alice'
 stdout 'oa-bob'
+stdout 'oa-carol'
 
 # credentials shows the admin and the demo users, with their passwords
 exec openarch credentials
@@ -18,6 +21,7 @@ stderr 'clear text'
 stdout '^admin +[A-Za-z0-9]+  \(context oa\)'
 stdout '^alice +[A-Za-z0-9]{20}  \(context oa-alice\)'
 stdout '^bob +[A-Za-z0-9]{20}  \(context oa-bob\)'
+stdout '^carol +[A-Za-z0-9]{20}  \(context oa-carol\)'
 
 # Running demo users again keeps the users and the passwords
 exec openarch credentials --output json
@@ -25,6 +29,7 @@ cp stdout first.json
 exec openarch demo users --output json
 stdout '"action": "unchanged"'
 stdout '"restartNeeded": false'
+stdout '"groups": \[\]'
 ! stdout '"action": "added"'
 exec openarch credentials --output json
 cmp stdout first.json
@@ -41,7 +46,7 @@ env OPENARCH_URL=$MOCK_URL
 env OPENARCH_USER=admin
 env OPENARCH_PASSWORD=$MOCK_PASSWORD
 exec openarch demo load
-stdout 'Loaded 4 folders and 6 documents under /Demo'
+stdout 'Loaded 6 folders and 10 documents under /Demo'
 exec openarch documents get /Demo/HR/salary-bands-2026
 stdout 'Salary bands 2026'
 exec openarch demo load --output json
@@ -49,6 +54,7 @@ stdout '"action": "exists"'
 exec openarch demo load --force --output json
 stdout '"action": "loaded"'
 stdout '"/Demo/Board/merger-proposal"'
+stdout '"/Demo/Public/Facilities/office-move-plan"'
 
 # demo reset deletes /Demo
 ! exec openarch demo reset

@@ -60,6 +60,9 @@ func newMockOpenArch() *httptest.Server {
 		switch {
 		case r.URL.Path == "/api/user":
 			writeJSON(w, http.StatusOK, []map[string]string{{"username": r.URL.Query().Get("name")}})
+		case strings.HasPrefix(r.URL.Path, "/api/user/"):
+			// Every user is known, as after 'openarch up' with the users file.
+			writeJSON(w, http.StatusOK, map[string]string{"id": strings.TrimPrefix(r.URL.Path, "/api/user/"), "username": "user"})
 		case strings.HasPrefix(r.URL.Path, "/api/group/"):
 			// Every group is known, as after 'openarch up' with the users file.
 			writeJSON(w, http.StatusOK, map[string]string{"id": strings.TrimPrefix(r.URL.Path, "/api/group/"), "name": "group"})

@@ -4,8 +4,8 @@ Add the demo users and a context for each one
 
 ### Synopsis
 
-Add the demo users alice and bob to config/users.yml, with generated
-passwords. Each user gets a context named <prefix>-<user>, with the password in
+Add the demo users alice, bob and carol to config/users.yml, with
+generated passwords. Each user gets a context named <prefix>-<user>, with the password in
 the credential store, for use with --context.
 
 The prefix is the name of the workspace context, for example local. A user

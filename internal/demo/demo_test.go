@@ -22,8 +22,10 @@ func TestAddUser(t *testing.T) {
 	if !HasGroups(f, u) {
 		t.Errorf("groups = %v", f.Users[f.Find(u.Name)].Groups)
 	}
-	if !slices.ContainsFunc(f.Groups, func(g users.Group) bool { return g.Name == u.Group }) {
-		t.Errorf("group %s not created: %v", u.Group, f.Groups)
+	for _, g := range u.ExtraGroups() {
+		if !slices.ContainsFunc(f.Groups, func(fg users.Group) bool { return fg.Name == g }) {
+			t.Errorf("group %s not created: %v", g, f.Groups)
+		}
 	}
 	if AddUser(&f, u, "{bcrypt}one") {
 		t.Error("the same user and hash is not a change")
@@ -43,10 +45,12 @@ func TestAddUser(t *testing.T) {
 
 // fakeClient records the documents that Load creates.
 type fakeClient struct {
-	known   bool
-	exists  bool
-	deleted []string
-	bodies  map[string]map[string]any
+	known bool
+	// unknownUser is a user id that OpenArch does not know.
+	unknownUser string
+	exists      bool
+	deleted     []string
+	bodies      map[string]map[string]any
 }
 
 func (c *fakeClient) GetDocument(_ context.Context, ref string) (api.Document, error) {
@@ -73,28 +77,51 @@ func (c *fakeClient) DeleteDocument(_ context.Context, id string) error {
 
 func (c *fakeClient) GroupExists(context.Context, string) (bool, error) { return c.known, nil }
 
-func groups() map[string]string {
-	return map[string]string{users.MembersGroup: "m-id", "demo-hr": "hr-id", "demo-finance": "fin-id"}
+func (c *fakeClient) UserExists(_ context.Context, id string) (bool, error) {
+	return c.known && id != c.unknownUser, nil
+}
+
+func ids() IDs {
+	return IDs{
+		Users:  map[string]string{"alice": "alice-id", "bob": "bob-id", "carol": "carol-id"},
+		Groups: map[string]string{users.MembersGroup: "m-id", "demo-hr": "hr-id", "demo-finance": "fin-id"},
+	}
+}
+
+func aclOf(t *testing.T, c *fakeClient, p string) string {
+	t.Helper()
+	b, err := json.Marshal(c.bodies[p]["sys_acl"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 func TestLoad(t *testing.T) {
 	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
-	res, err := Load(context.Background(), c, groups(), false)
+	res, err := Load(context.Background(), c, ids(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Action != "loaded" || res.Folders != 4 || res.Documents != 6 || len(c.bodies) != 11 {
+	if res.Action != "loaded" || res.Folders != 6 || res.Documents != 10 || len(c.bodies) != 17 {
 		t.Errorf("result = %+v, created %d", res, len(c.bodies))
 	}
-	acl, _ := json.Marshal(c.bodies["/Demo/HR"]["sys_acl"])
-	if string(acl) != `[{"granted":true,"group":{"id":"hr-id"},"permission":"Read"}]` {
-		t.Errorf("HR acl = %s", acl)
+	for p, want := range map[string]string{
+		"/Demo/HR": `[{"granted":true,"group":{"id":"hr-id"},"permission":"Read"}]`,
+		// The block comes last: it denies everything that was not granted before it.
+		"/Demo/Public/Facilities": `[{"granted":true,"permission":"Read","user":{"id":"bob-id"}},` +
+			`{"granted":false,"permission":"Everything","user":{"id":"__Everyone__"}}]`,
+		"/Demo/Finance/travel-policy-2027":    `[{"granted":true,"permission":"Read","user":{"id":"alice-id"}}]`,
+		"/Demo/Finance/contractor-rates-2027": `[{"end":"2026-01-01T00:00:00Z","granted":true,"permission":"Read","user":{"id":"alice-id"}}]`,
+	} {
+		if got := aclOf(t, c, p); got != want {
+			t.Errorf("%s acl = %s, want %s", p, got, want)
+		}
 	}
-	if _, ok := c.bodies["/Demo/Board"]["sys_acl"]; ok {
-		t.Error("Board must have no access entries: administrators only")
-	}
-	if _, ok := c.bodies["/Demo"]["sys_acl"]; ok {
-		t.Error("/Demo must have no access entries")
+	for _, p := range []string{"/Demo", "/Demo/Board", "/Demo/HR/Reviews", "/Demo/HR/salary-bands-2026"} {
+		if _, ok := c.bodies[p]["sys_acl"]; ok {
+			t.Errorf("%s must have no access entries of its own", p)
+		}
 	}
 	if c.bodies["/Demo/Finance/budget-forecast-2027"]["sys_primaryType"] != "SysFile" {
 		t.Errorf("document = %v", c.bodies["/Demo/Finance/budget-forecast-2027"])
@@ -103,27 +130,36 @@ func TestLoad(t *testing.T) {
 
 func TestLoadExistsAndForce(t *testing.T) {
 	c := &fakeClient{known: true, exists: true, bodies: map[string]map[string]any{}}
-	res, err := Load(context.Background(), c, groups(), false)
+	res, err := Load(context.Background(), c, ids(), false)
 	if err != nil || res.Action != "exists" || len(c.bodies) != 0 {
 		t.Errorf("result = %+v, err = %v, created %d", res, err, len(c.bodies))
 	}
-	res, err = Load(context.Background(), c, groups(), true)
+	res, err = Load(context.Background(), c, ids(), true)
 	if err != nil || res.Action != "loaded" || len(c.deleted) != 1 {
 		t.Errorf("result = %+v, err = %v, deleted %v", res, err, c.deleted)
 	}
 }
 
-func TestLoadNeedsGroups(t *testing.T) {
+func TestLoadNeedsPrincipals(t *testing.T) {
 	c := &fakeClient{known: true, bodies: map[string]map[string]any{}}
-	g := groups()
-	delete(g, "demo-finance")
-	if _, err := Load(context.Background(), c, g, false); err == nil || !strings.Contains(err.Error(), "demo-finance is not in") {
+	missingGroup := ids()
+	delete(missingGroup.Groups, "demo-finance")
+	if _, err := Load(context.Background(), c, missingGroup, false); err == nil || !strings.Contains(err.Error(), "group demo-finance is not in") {
 		t.Errorf("err = %v", err)
 	}
-	c.known = false
-	_, err := Load(context.Background(), c, groups(), false)
+	missingUser := ids()
+	delete(missingUser.Users, "bob")
+	if _, err := Load(context.Background(), c, missingUser, false); err == nil || !strings.Contains(err.Error(), "user bob is not in") {
+		t.Errorf("err = %v", err)
+	}
 	var oerr *output.Error
-	if !errors.As(err, &oerr) || !strings.Contains(oerr.Hint, "openarch up") {
+	c.unknownUser = "alice-id"
+	if _, err := Load(context.Background(), c, ids(), false); !errors.As(err, &oerr) || !strings.Contains(oerr.Message, "user alice") || !strings.Contains(oerr.Hint, "openarch up") {
+		t.Errorf("err = %v", err)
+	}
+	c.unknownUser = ""
+	c.known = false
+	if _, err := Load(context.Background(), c, ids(), false); !errors.As(err, &oerr) || !strings.Contains(oerr.Hint, "openarch up") {
 		t.Errorf("err = %v", err)
 	}
 	if len(c.bodies) != 0 {

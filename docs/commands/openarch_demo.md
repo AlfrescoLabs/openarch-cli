@@ -7,8 +7,9 @@ Add sample users and documents that show permission-aware search
 Add sample users and documents that show permission-aware search: the
 same query returns different documents for each user.
 
-1. 'demo users' adds the users alice (group demo-hr) and bob (group
-   demo-finance) with generated passwords, and saves a context for each one.
+1. 'demo users' adds the users alice (group demo-hr), bob (group
+   demo-finance) and carol (no extra group) with generated passwords, and
+   saves a context for each one.
 2. 'openarch up' starts OpenArch, or restarts it: it reads its users only at
    startup.
 3. 'demo load' creates folders and documents under /Demo with different read
@@ -26,6 +27,7 @@ openarch demo [flags]
   openarch demo load
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol
 ```
 
 ### Options

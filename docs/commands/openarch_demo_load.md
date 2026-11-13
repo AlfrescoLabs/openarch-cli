@@ -5,9 +5,11 @@ Create the demo folders and documents
 ### Synopsis
 
 Create the demo folders and documents under /Demo, as the workspace admin.
-Each folder can be read by one group: Public by every user, HR by demo-hr,
-Finance by demo-finance, and Board by administrators only. The documents have
-metadata only (title and description).
+Public can be read by every user, HR by demo-hr, Finance by demo-finance, and
+Board by administrators only. Some folders and documents have their own access
+entries: Public/Facilities blocks what it inherits and gives bob access, a
+Finance document adds alice, and another one gave alice access that has ended.
+The documents have metadata only (title and description).
 
 The demo users must exist in OpenArch: run 'openarch demo users', then
 'openarch up'. When /Demo exists, nothing is loaded; --force deletes it first.

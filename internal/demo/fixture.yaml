@@ -1,0 +1,160 @@
+# Sample data of 'openarch demo': users, folders with read access, and
+# documents, so that one query returns different documents for each user.
+#
+# All data is synthetic. Every document has a canary token in its description:
+# a check for documents a user must not see is a string match of their
+# canaries.
+#
+# Access rules, as OpenArch applies them:
+# - A document inherits the access entries of its folder, unless the folder or
+#   the document blocks inheritance. The block is the entry "__Everyone__,
+#   Everything, not granted", written last.
+# - Entries name users and groups by their id in config/users.yml. 'demo load'
+#   maps the names below to ids.
+# - An entry with an end date in the past gives no access.
+# - The root folder has no entries, so only administrators read what has none.
+# - Administrators read everything.
+#
+# visibleTo lists the demo users that can read the document. Administrators
+# are not listed: they read every document. A test computes visibleTo from the
+# access entries and fails when the two differ.
+version: 1
+root: /Demo
+
+users:
+  - name: alice
+    groups: [members, demo-hr]
+  - name: bob
+    groups: [members, demo-finance]
+  - name: carol
+    groups: [members]
+
+# Words that every query check can use: each one hits documents in more than
+# one permission zone.
+sharedWords: ["2026", "2027", plan, budget, office, calendar]
+
+folders:
+  - path: /Demo
+    acl: []
+  - path: /Demo/Public
+    acl:
+      - {group: members, permission: Read}
+  - path: /Demo/Public/Facilities
+    acl:
+      - {user: bob, permission: Read}
+    blockInheritance: true
+  - path: /Demo/HR
+    acl:
+      - {group: demo-hr, permission: Read}
+  - path: /Demo/HR/Reviews
+    acl: []
+  - path: /Demo/Finance
+    acl:
+      - {group: demo-finance, permission: Read}
+  - path: /Demo/Board
+    acl: []
+
+documents:
+  - name: holiday-calendar-2026
+    folder: /Demo/Public
+    title: Holiday calendar 2026
+    description: >-
+      Public holidays and office closures in 2026. The calendar lists the days
+      the office is closed and the plan for cover at the help desk.
+      Reference oafx-01-hk4q.
+    canary: oafx-01-hk4q
+    visibleTo: [alice, bob, carol]
+
+  - name: office-wifi-guide
+    folder: /Demo/Public
+    title: Office Wi-Fi guide
+    description: >-
+      How to connect to the office Wi-Fi. The guide covers guest access, the
+      plan to change the network password in 2026 and who to call for help.
+      Reference oafx-02-wm7c.
+    canary: oafx-02-wm7c
+    visibleTo: [alice, bob, carol]
+
+  - name: salary-bands-2026
+    folder: /Demo/HR
+    title: Salary bands 2026
+    description: >-
+      Salary ranges per job level for 2026. HR uses the bands to plan job
+      offers and the budget for the yearly pay review.
+      Reference oafx-03-sp2n.
+    canary: oafx-03-sp2n
+    visibleTo: [alice]
+
+  - name: hiring-plan-q1-2027
+    folder: /Demo/HR
+    title: Hiring plan Q1 2027
+    description: >-
+      Open positions and hiring budget for the first quarter of 2027. The plan
+      lists each role, its team and the target start date in the calendar.
+      Reference oafx-04-hr9d.
+    canary: oafx-04-hr9d
+    visibleTo: [alice]
+
+  - name: budget-forecast-2027
+    folder: /Demo/Finance
+    title: Budget forecast 2027
+    description: >-
+      Revenue and cost forecast for 2027. Finance compares the budget with
+      2026 and plans the office costs for each quarter.
+      Reference oafx-05-bf3x.
+    canary: oafx-05-bf3x
+    visibleTo: [bob]
+
+  - name: merger-proposal
+    folder: /Demo/Board
+    title: Merger proposal
+    description: >-
+      Confidential board proposal. It describes a possible merger in 2027, the
+      budget for external advisers and the plan for the office teams.
+      Reference oafx-06-mg8v.
+    canary: oafx-06-mg8v
+    visibleTo: []
+
+  - name: office-move-plan
+    folder: /Demo/Public/Facilities
+    title: Office move plan
+    description: >-
+      Plan to move the office to a new floor in 2027. It gives the move
+      calendar, the budget for furniture and the teams that move first.
+      Reference oafx-07-om5t.
+    canary: oafx-07-om5t
+    visibleTo: [bob]
+
+  - name: review-calendar-2027
+    folder: /Demo/HR/Reviews
+    title: Review calendar 2027
+    description: >-
+      Calendar of the performance reviews in 2027. Managers plan each review
+      meeting, and HR books the office rooms for them.
+      Reference oafx-08-rc6j.
+    canary: oafx-08-rc6j
+    visibleTo: [alice]
+
+  - name: travel-policy-2027
+    folder: /Demo/Finance
+    title: Travel policy 2027
+    description: >-
+      Travel rules for 2027. They cover the budget for each trip, how to plan
+      a visit to another office and the calendar for expense claims.
+      Reference oafx-09-tp1w.
+    canary: oafx-09-tp1w
+    acl:
+      - {user: alice, permission: Read}
+    visibleTo: [alice, bob]
+
+  - name: contractor-rates-2027
+    folder: /Demo/Finance
+    title: Contractor rates 2027
+    description: >-
+      Day rates for contractors in 2027. Finance uses the rates to plan the
+      contractor budget for each office.
+      Reference oafx-10-cr2z.
+    canary: oafx-10-cr2z
+    acl:
+      - {user: alice, permission: Read, end: "2026-01-01T00:00:00Z"}
+    visibleTo: [bob]
