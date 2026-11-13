@@ -100,27 +100,37 @@ func (c *Client) ReplaceFile(ctx context.Context, parent, name string, title, de
 	return doc, true, err
 }
 
-func (c *Client) attach(ctx context.Context, id, name, mimeType string, content io.Reader) (Document, error) {
+// upload sends content to POST /api/upload and returns the upload id, which a
+// blob property of a document then points to.
+func (c *Client) upload(ctx context.Context, name, mimeType, contentType string, content io.Reader) (string, error) {
 	what := "upload " + name
-	resp, err := c.Gen.UploadWithBodyWithResponse(ctx, &gen.UploadParams{FileName: &name, MimeType: &mimeType}, mimeType, content)
+	resp, err := c.Gen.UploadWithBodyWithResponse(ctx, &gen.UploadParams{FileName: &name, MimeType: &mimeType}, contentType, content)
 	if err != nil {
-		return Document{}, c.Transport(err, what)
+		return "", c.Transport(err, what)
 	}
 	if err := c.checkBody(resp.StatusCode(), resp.Body, what); err != nil {
-		return Document{}, err
+		return "", err
 	}
 	var up struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(resp.Body, &up); err != nil || up.ID == "" {
-		return Document{}, output.NewError(output.ExitRemote, what+": the server returned no upload id", "")
+		return "", output.NewError(output.ExitRemote, what+": the server returned no upload id", "")
 	}
-	// PATCH accepts only JSON Patch, so the blob is set with PUT.
-	put, err := json.Marshal(map[string]any{"sysfile_blob": map[string]string{"uploadId": up.ID}})
+	return up.ID, nil
+}
+
+func (c *Client) attach(ctx context.Context, id, name, mimeType string, content io.Reader) (Document, error) {
+	uploadID, err := c.upload(ctx, name, mimeType, mimeType, content)
 	if err != nil {
 		return Document{}, err
 	}
-	what = "attach " + name
+	// PATCH accepts only JSON Patch, so the blob is set with PUT.
+	put, err := json.Marshal(map[string]any{"sysfile_blob": map[string]string{"uploadId": uploadID}})
+	if err != nil {
+		return Document{}, err
+	}
+	what := "attach " + name
 	presp, err := c.Gen.UpdateDocumentByIdWithBodyWithResponse(ctx, id, &gen.UpdateDocumentByIdParams{}, "application/json", bytes.NewReader(put))
 	if err != nil {
 		return Document{}, c.Transport(err, what)
