@@ -23,7 +23,7 @@ func newQueryCmd(app *App) *cobra.Command {
 	var f connFlags
 	var o api.QueryOptions
 	var m modelFlags
-	var semantic string
+	var semantic, keywords string
 	cmd := &cobra.Command{
 		Use:   "query [<query>]",
 		Short: "Run a query and list the documents found",
@@ -42,7 +42,9 @@ With --output json, the result is the server response as is.
 vector with a local model on Docker Model Runner, and POST /api/query/embeddings
 compares it with the stored vectors of the same model (see 'openarch demo load
 --embeddings'). The query, when given, selects the documents to search. Only
-documents the caller may read are found.`,
+documents the caller may read are found. --keywords adds a word search in the
+passage text; OpenArch merges both rankings. With --output json, each hit also
+has the passage id and the location of the passage in its document.`,
 		Example: `  openarch query "SELECT * FROM SysContent"
   openarch query "SELECT * FROM SysFolder" --limit 50 --sort sys_title
   openarch query "SELECT * FROM SysContent" --sync --total --output json
@@ -74,11 +76,14 @@ documents the caller may read are found.`,
 				if len(args) == 1 {
 					query = args[0]
 				}
-				hits, total, err := c.SearchEmbeddings(cmd.Context(), v[0], typ, query, o.Limit)
+				hits, total, err := c.SearchHybrid(cmd.Context(), v[0], typ, query, keywords, o.Limit)
 				if err != nil {
 					return err
 				}
 				return app.Printer.Print(SemanticResult{Text: semantic, EmbeddingType: typ, Hits: hits, TotalCount: total})
+			}
+			if keywords != "" {
+				return output.Usage("--keywords works only with --semantic", "Add --semantic with the meaning to search for.")
 			}
 			if o.Syntax != "" && o.Syntax != "hxql" && o.Syntax != "expr" {
 				return output.Usage(fmt.Sprintf("invalid syntax %q", o.Syntax), "Use hxql or expr.")
@@ -107,6 +112,7 @@ documents the caller may read are found.`,
 	fl.BoolVar(&o.Sync, "sync", false, "wait until the search index has the latest changes")
 	fl.BoolVar(&o.Total, "total", false, "count every match, not only up to the server limit")
 	fl.StringVar(&semantic, "semantic", "", "find the documents nearest in meaning to this text")
+	fl.StringVar(&keywords, "keywords", "", "with --semantic: also match these words in the passage text (hybrid search)")
 	m.register(cmd)
 	return cmd
 }

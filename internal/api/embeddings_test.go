@@ -160,7 +160,7 @@ func TestSearchEmbeddings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if total != 1 || len(hits) != 1 || hits[0] != (EmbeddingHit{DocID: "d1", Score: 0.6, Text: "Salary bands"}) {
+	if total != 1 || len(hits) != 1 || hits[0].DocID != "d1" || hits[0].Score != 0.6 || hits[0].Text != "Salary bands" {
 		t.Errorf("hits = %+v, total %d", hits, total)
 	}
 	// OpenArch does not pad a query vector, so the CLI does.
@@ -173,5 +173,25 @@ func TestSearchEmbeddings(t *testing.T) {
 	if _, _, err := c.SearchEmbeddings(context.Background(), make([]float32, VectorDimension+1), "t", "", 1); err == nil ||
 		!strings.Contains(err.Error(), "at most") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestSearchHybridSendsKeywordsAndReturnsPassageID(t *testing.T) {
+	f, c := newFakeEmbeddings(t, false)
+	hits, _, err := c.SearchHybrid(context.Background(), []float32{0.5}, "ai-model", "", "salary bands", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.query["chunkFTS"] != "salary bands" {
+		t.Errorf("chunkFTS = %v", f.query["chunkFTS"])
+	}
+	if len(hits) != 1 || hits[0].ID != "e1" {
+		t.Errorf("hits = %+v", hits)
+	}
+	if _, _, err := c.SearchEmbeddings(context.Background(), []float32{0.5}, "ai-model", "", 3); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := f.query["chunkFTS"]; ok {
+		t.Error("a vector-only search sent chunkFTS")
 	}
 }

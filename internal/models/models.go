@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -21,6 +22,15 @@ const DefaultURL = "http://localhost:12434/engines/v1"
 // DefaultEmbedModel makes vectors of 1024 dimensions, the size of the vector
 // index of OpenArch.
 const DefaultEmbedModel = "ai/mxbai-embed-large"
+
+// EmbedModel is the embedding model to use by default: OPENARCH_EMBED_MODEL
+// when set, else DefaultEmbedModel.
+func EmbedModel() string {
+	if m := os.Getenv("OPENARCH_EMBED_MODEL"); m != "" {
+		return m
+	}
+	return DefaultEmbedModel
+}
 
 // Client calls the model API.
 type Client struct {

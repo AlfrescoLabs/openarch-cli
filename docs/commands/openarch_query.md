@@ -19,7 +19,9 @@ With --output json, the result is the server response as is.
 vector with a local model on Docker Model Runner, and POST /api/query/embeddings
 compares it with the stored vectors of the same model (see 'openarch demo load
 --embeddings'). The query, when given, selects the documents to search. Only
-documents the caller may read are found.
+documents the caller may read are found. --keywords adds a word search in the
+passage text; OpenArch merges both rankings. With --output json, each hit also
+has the passage id and the location of the passage in its document.
 
 ```
 openarch query [<query>] [flags]
@@ -40,8 +42,9 @@ openarch query [<query>] [flags]
 ```
   -h, --help               help for query
       --insecure           do not verify the server certificate (env OPENARCH_INSECURE)
+      --keywords string    with --semantic: also match these words in the passage text (hybrid search)
       --limit int          maximum number of documents (default 10)
-      --model string       embedding model on Docker Model Runner (1024 dimensions or fewer) (default "ai/mxbai-embed-large")
+      --model string       embedding model on Docker Model Runner (1024 dimensions or fewer); default from OPENARCH_EMBED_MODEL when set (default "ai/mxbai-embed-large")
       --model-url string   OpenAI-compatible API of Docker Model Runner (default "http://localhost:12434/engines/v1")
       --offset int         number of documents to skip
       --password string    password (insecure: it stays in the shell history; prefer --password-stdin or env OPENARCH_PASSWORD)

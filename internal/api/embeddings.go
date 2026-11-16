@@ -142,16 +142,28 @@ func (c *Client) StoreEmbeddings(ctx context.Context, doc Document, typ string, 
 
 // EmbeddingHit is one vector that a search found.
 type EmbeddingHit struct {
+	// ID is the id of the passage (the stored vector).
+	ID string `json:"id,omitempty"`
 	// DocID is the id of the document the vector belongs to.
 	DocID string  `json:"docId"`
 	Score float64 `json:"score"`
 	Text  string  `json:"text,omitempty"`
+	// Location is where the passage is in the document, for example
+	// {"text":{"page":13,"paragraph":12}}, as stored.
+	Location json.RawMessage `json:"location,omitempty"`
 }
 
 // SearchEmbeddings returns the vectors of type typ nearest to vector, among the
 // documents that query (HXQL) selects and the caller may read. An empty query
 // searches every document.
 func (c *Client) SearchEmbeddings(ctx context.Context, vector []float32, typ, query string, limit int64) ([]EmbeddingHit, int64, error) {
+	return c.SearchHybrid(ctx, vector, typ, query, "", limit)
+}
+
+// SearchHybrid is SearchEmbeddings that also matches keywords, a space-separated
+// list of words, in the passage text. OpenArch merges the two rankings. Empty
+// keywords give a vector-only search.
+func (c *Client) SearchHybrid(ctx context.Context, vector []float32, typ, query, keywords string, limit int64) ([]EmbeddingHit, int64, error) {
 	if len(vector) > VectorDimension {
 		return nil, 0, output.NewError(output.ExitUsage, fmt.Sprintf("the query vector has %d dimensions, OpenArch takes at most %d", len(vector), VectorDimension), "")
 	}
@@ -164,6 +176,9 @@ func (c *Client) SearchEmbeddings(ctx context.Context, vector []float32, typ, qu
 	if query != "" {
 		q.Query = &query
 	}
+	if keywords != "" {
+		q.ChunkFTS = &keywords
+	}
 	resp, err := c.Gen.GetEmbeddingsByQueryWithResponse(ctx, q)
 	if err != nil {
 		return nil, 0, c.Transport(err, "vector search")
@@ -173,9 +188,11 @@ func (c *Client) SearchEmbeddings(ctx context.Context, vector []float32, typ, qu
 	}
 	var r struct {
 		Embeddings []struct {
-			DocID string  `json:"sysembed_docId"`
-			Score float64 `json:"sysembed_score"`
-			Text  string  `json:"sysembed_text"`
+			ID       string          `json:"sysembed_id"`
+			DocID    string          `json:"sysembed_docId"`
+			Score    float64         `json:"sysembed_score"`
+			Text     string          `json:"sysembed_text"`
+			Location json.RawMessage `json:"sysembed_location"`
 		} `json:"embeddings"`
 		TotalCount int64 `json:"totalCount"`
 	}
@@ -184,7 +201,7 @@ func (c *Client) SearchEmbeddings(ctx context.Context, vector []float32, typ, qu
 	}
 	hits := make([]EmbeddingHit, len(r.Embeddings))
 	for i, e := range r.Embeddings {
-		hits[i] = EmbeddingHit{DocID: e.DocID, Score: e.Score, Text: e.Text}
+		hits[i] = EmbeddingHit{ID: e.ID, DocID: e.DocID, Score: e.Score, Text: e.Text, Location: e.Location}
 	}
 	return hits, r.TotalCount, nil
 }
