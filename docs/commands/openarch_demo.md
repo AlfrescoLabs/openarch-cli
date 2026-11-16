@@ -14,6 +14,8 @@ same query returns different documents for each user.
    startup.
 3. 'demo load' creates folders and documents under /Demo with different read
    access. 'demo reset' deletes them.
+4. 'demo check' logs in as each user and checks that each one gets only the
+   documents they may read.
 
 ```
 openarch demo [flags]
@@ -28,6 +30,7 @@ openarch demo [flags]
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol
+  openarch demo check
 ```
 
 ### Options
@@ -50,6 +53,7 @@ openarch demo [flags]
 ### SEE ALSO
 
 * [openarch](openarch.md)	 - CLI for OpenArch: install and operate Hyland OpenArch
+* [openarch demo check](openarch_demo_check.md)	 - Check that each demo user gets only the documents they may read
 * [openarch demo load](openarch_demo_load.md)	 - Create the demo folders and documents
 * [openarch demo reset](openarch_demo_reset.md)	 - Delete the demo folders and documents
 * [openarch demo users](openarch_demo_users.md)	 - Add the demo users and a context for each one

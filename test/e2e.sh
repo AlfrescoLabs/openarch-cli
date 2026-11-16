@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# End-to-end test against a real Docker stack: init, up, smoke-test, restart,
-# check that data is kept, then clean.
+# End-to-end test against a real Docker stack: init, up, smoke-test, the demo
+# with its permission check, restart, check that data is kept, then clean.
 #
 # Usage: test/e2e.sh <openarch binary> [init flags...]
 # Example: test/e2e.sh bin/openarch --storage bind
@@ -11,6 +11,14 @@ set -euo pipefail
 
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 shift
+repo=$(cd "$(dirname "$0")/.." && pwd)
+# Workspaces with the users bundled in the OpenArch image have no demo users.
+demo=1
+for arg in "$@"; do
+	if [ "$arg" = --default-users ]; then
+		demo=
+	fi
+done
 tmp=$(mktemp -d)
 # Compose names the project after the folder, so a unique name keeps old
 # volumes of another run out of this one.
@@ -22,6 +30,9 @@ export OPENARCH_CREDENTIAL_STORE=file
 oa() { "$bin" --dir "$ws" --non-interactive "$@"; }
 
 on_error() {
+	if [ -n "${fake:-}" ]; then
+		kill "$fake" 2>/dev/null || true
+	fi
 	echo "::group::status and logs"
 	oa status || true
 	oa logs --tail 200 || true
@@ -34,11 +45,34 @@ step() { echo "== $*"; }
 step "init $*"
 "$bin" init --dir "$ws" --non-interactive "$@"
 
+if [ -n "$demo" ]; then
+	# OpenArch reads its users only at startup, so they come before up.
+	step "demo users"
+	oa demo users
+fi
+
 step "up"
 oa up
 
 step "smoke-test"
 oa smoke-test
+
+if [ -n "$demo" ]; then
+	step "demo load and demo check, with vectors from a fake model"
+	(cd "$repo" && go build -o "$tmp/fakemodel" ./test/fakemodel)
+	"$tmp/fakemodel" 127.0.0.1:18434 &
+	fake=$!
+	for _ in $(seq 50); do
+		if curl -fsS -X POST -d '{"input":["ready"]}' http://127.0.0.1:18434/v1/embeddings >/dev/null 2>&1; then
+			break
+		fi
+		sleep 0.2
+	done
+	model=(--model-url http://127.0.0.1:18434/v1)
+	oa demo load --embeddings "${model[@]}"
+	oa demo check --semantic "${model[@]}"
+	kill "$fake"
+fi
 
 step "create a folder, then restart"
 oa documents create --parent / --name e2e-persist --type SysFolder

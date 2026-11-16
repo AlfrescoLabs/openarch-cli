@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 	"github.com/AlfrescoLabs/openarch-cli/internal/users"
+	"github.com/AlfrescoLabs/openarch-cli/internal/version"
 )
 
 // demoPasswordLength is the length of the generated demo passwords.
@@ -31,17 +33,112 @@ same query returns different documents for each user.
 2. 'openarch up' starts OpenArch, or restarts it: it reads its users only at
    startup.
 3. 'demo load' creates folders and documents under /Demo with different read
-   access. 'demo reset' deletes them.`,
+   access. 'demo reset' deletes them.
+4. 'demo check' logs in as each user and checks that each one gets only the
+   documents they may read.`,
 		Example: `  openarch demo users
   openarch up
   openarch demo load
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-alice
   openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-bob
-  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol`,
+  openarch query "SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/'" --context local-carol
+  openarch demo check`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(newDemoUsersCmd(app), newDemoLoadCmd(app), newDemoResetCmd(app))
+	cmd.AddCommand(newDemoUsersCmd(app), newDemoLoadCmd(app), newDemoCheckCmd(app), newDemoResetCmd(app))
+	return cmd
+}
+
+// checkVectorTimeout is how long 'demo check --semantic' waits for new vectors
+// to reach the search index.
+const checkVectorTimeout = 30 * time.Second
+
+func newDemoCheckCmd(app *App) *cobra.Command {
+	var f connFlags
+	var m modelFlags
+	var semantic bool
+	cmd := &cobra.Command{
+		Use:   "check",
+		Short: "Check that each demo user gets only the documents they may read",
+		Long: `Check that each demo user gets only the documents they may read. The check
+logs in as the workspace admin and as alice, bob and carol, with the passwords
+that 'demo users' stored, and compares what OpenArch returns with the access
+entries of the demo data: document lists from the search index and from the
+database, title queries, and reads of every document by id.
+
+Each demo document has a unique code in its description. A response with the
+code, the name or the content of a document the user may not read is a leak.
+A document the user may read but does not get is a problem.
+
+--semantic also asks five questions with vector search (see 'demo load
+--embeddings'). The questions become vectors with a local model on Docker
+Model Runner.
+
+The last line sums up the result and the versions, and can be shared as is.
+Exit code 0 means no leak and no problem, 4 means at least one.`,
+		Example: `  openarch demo check
+  openarch demo check --semantic
+  openarch demo check --output json`,
+		Args: noArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			_, cfg, uf, err := app.usersWorkspace()
+			if err != nil {
+				return err
+			}
+			for _, u := range demo.Users {
+				if !demo.HasGroups(uf, u) {
+					return output.NewError(output.ExitPrerequisite, "demo user "+u.Name+" is not in "+users.Path,
+						"Run 'openarch demo users', then 'openarch up'.")
+				}
+			}
+			admin, err := app.client(cmd, &f)
+			if err != nil {
+				return err
+			}
+			st, err := app.store()
+			if err != nil {
+				return err
+			}
+			// 'demo users' stores the passwords under the workspace URL.
+			url := strings.TrimSuffix(cfg.URL(), "/")
+			o := demo.CheckOptions{Admin: admin, Wait: admin.WaitForIndexing, Users: map[string]demo.Reader{}}
+			for _, u := range demo.Users {
+				pw, _ := st.Get(url, u.Name)
+				if pw == "" {
+					return output.NewError(output.ExitPrerequisite, "no stored password for demo user "+u.Name,
+						"Run 'openarch demo users', then 'openarch up'.")
+				}
+				c, err := admin.As(u.Name, pw, app.Log)
+				if err != nil {
+					return err
+				}
+				o.Users[u.Name] = c
+			}
+			if semantic {
+				o.Embed, o.EmbeddingType = m.embedder(), api.EmbeddingType(m.model)
+				o.VectorTimeout, o.PollInterval = checkVectorTimeout, time.Second
+			}
+			rep, err := demo.Check(cmd.Context(), o)
+			if err != nil {
+				return err
+			}
+			rep.CLIVersion = version.Get().Version
+			if p, err := admin.Ping(cmd.Context()); err == nil {
+				rep.OpenArchVersion = p.Version
+			}
+			if err := app.Printer.Print(rep); err != nil {
+				return err
+			}
+			if !rep.Passed {
+				return output.Exit(output.ExitUnhealthy, "demo check failed")
+			}
+			return nil
+		},
+	}
+	f.register(cmd)
+	cmd.Flags().BoolVar(&semantic, "semantic", false, "also check vector search, with a local model")
+	m.register(cmd)
 	return cmd
 }
 

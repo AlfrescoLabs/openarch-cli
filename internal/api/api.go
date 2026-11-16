@@ -108,6 +108,13 @@ func redact(h http.Header) map[string]string {
 // URL returns the server URL.
 func (c *Client) URL() string { return c.creds.URL }
 
+// As returns a client for the same server, logged in as another user.
+func (c *Client) As(user, password string, log *slog.Logger) (*Client, error) {
+	creds := c.creds
+	creds.User, creds.Password, creds.Context = user, password, ""
+	return New(creds, log)
+}
+
 // Check maps an HTTP status to a CLI error. 401 and 403 are authentication
 // errors (exit code 6); other non-2xx statuses are remote errors (exit code 5).
 // A 403 means the user is known but has no permission, so its hint is not

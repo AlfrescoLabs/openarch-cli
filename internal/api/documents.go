@@ -174,6 +174,26 @@ func (c *Client) GetDocument(ctx context.Context, ref string) (Document, error) 
 	return parseDocument(body)
 }
 
+// GetDocumentRaw gets a document by id and returns the HTTP status and body as
+// they are, also for an error status: a check can then look at what a refused
+// request still sends back.
+func (c *Client) GetDocumentRaw(ctx context.Context, id string) (int, []byte, error) {
+	status, body, err := c.raw(ctx, http.MethodGet, c.creds.URL+"/api/documents/"+url.PathEscape(id), nil)
+	if err != nil {
+		return 0, nil, c.Transport(err, "get document "+id)
+	}
+	return status, body, nil
+}
+
+// WaitForIndexing waits until the search index has the latest changes.
+func (c *Client) WaitForIndexing(ctx context.Context) error {
+	resp, err := c.Gen.WaitForFullTextSearchIndexingWithResponse(ctx, &gen.WaitForFullTextSearchIndexingParams{})
+	if err != nil {
+		return c.Transport(err, "wait for the search index")
+	}
+	return c.checkBody(resp.StatusCode(), resp.Body, "wait for the search index")
+}
+
 // CreateDocument creates a document under a parent given by id or path. body is a JSON object.
 func (c *Client) CreateDocument(ctx context.Context, parent string, body []byte) (Document, error) {
 	what := "create document under " + parent

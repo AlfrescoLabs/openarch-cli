@@ -68,7 +68,9 @@ func newMockOpenArch() *httptest.Server {
 			writeJSON(w, http.StatusOK, map[string]any{"data": data})
 			return
 		}
-		if u, p, ok := r.BasicAuth(); !ok || u != mockUser || p != mockPassword {
+		// The demo users log in with any password. The mock has no permissions:
+		// they get every document, so 'demo check' finds leaks.
+		if u, p, ok := r.BasicAuth(); !ok || (u != mockUser || p != mockPassword) && !mockDemoUsers[u] {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -83,6 +85,8 @@ func newMockOpenArch() *httptest.Server {
 			writeJSON(w, http.StatusOK, map[string]string{"id": strings.TrimPrefix(r.URL.Path, "/api/group/"), "name": "group"})
 		case r.URL.Path == "/api/upload" && r.Method == http.MethodPost:
 			writeJSON(w, http.StatusCreated, map[string]string{"id": fmt.Sprintf("up%d", mockSeq.Add(1))})
+		case r.URL.Path == "/api/query/waitForFullTextSearchIndexing":
+			w.WriteHeader(http.StatusOK)
 		case r.URL.Path == "/api/query/embeddings" && r.Method == http.MethodPost:
 			// One hit per document with stored embeddings, in path order.
 			var paths []string
@@ -113,6 +117,26 @@ func newMockOpenArch() *httptest.Server {
 			// Like OpenArch, a query that names columns returns no documents.
 			if !strings.HasPrefix(q.Query, "SELECT *") {
 				list = []map[string]any{}
+			}
+			// The demo check lists a folder: WHERE sys_path STARTSWITH '<path>',
+			// with AND sys_title LIKE '%<word>%' for its title queries.
+			if _, after, ok := strings.Cut(q.Query, "sys_path STARTSWITH '"); ok {
+				prefix, _, _ := strings.Cut(after, "'")
+				word := ""
+				if _, after, ok := strings.Cut(q.Query, "sys_title LIKE '%"); ok {
+					word, _, _ = strings.Cut(after, "%'")
+				}
+				var paths []string
+				for p, d := range docs {
+					if strings.HasPrefix(p, prefix) && d["sys_primaryType"] == "SysFile" && strings.Contains(d["sys_title"].(string), word) {
+						paths = append(paths, p)
+					}
+				}
+				sort.Strings(paths)
+				list = []map[string]any{}
+				for _, p := range paths {
+					list = append(list, docs[p])
+				}
 			}
 			// The smoke test filters by name: WHERE sys_name = '<name>'.
 			if _, after, ok := strings.Cut(q.Query, "sys_name = '"); ok {
@@ -154,7 +178,13 @@ func newMockOpenArch() *httptest.Server {
 			case http.MethodPost:
 				create(w, r, docs, d)
 			case http.MethodDelete:
-				delete(docs, d["sys_path"].(string))
+				// Like OpenArch, deleting a folder deletes what is in it.
+				p := d["sys_path"].(string)
+				for k := range docs {
+					if k == p || strings.HasPrefix(k, p+"/") {
+						delete(docs, k)
+					}
+				}
 				w.WriteHeader(http.StatusNoContent)
 			case http.MethodPut:
 				var body map[string]any
@@ -174,6 +204,9 @@ func newMockOpenArch() *httptest.Server {
 		}
 	}))
 }
+
+// mockDemoUsers are the users of 'openarch demo'.
+var mockDemoUsers = map[string]bool{"alice": true, "bob": true, "carol": true}
 
 // mockSeq numbers the documents the mock creates. Scripts run in parallel, so it is atomic.
 var mockSeq atomic.Int64

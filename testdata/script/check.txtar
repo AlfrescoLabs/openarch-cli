@@ -1,0 +1,35 @@
+# demo check logs in as each demo user. The mock OpenArch has no permissions:
+# every user gets every document, so the check finds leaks and fails.
+exec openarch init --dir ws --context-name oa --non-interactive --memory 4g
+cd ws
+exec openarch demo users
+env OPENARCH_URL=$MOCK_URL
+env OPENARCH_USER=admin
+env OPENARCH_PASSWORD=$MOCK_PASSWORD
+exec openarch demo load --embeddings --model-url $MOCK_URL/v1
+! exec openarch demo check
+stdout '^admin  may read 10 of 10 documents: 22 requests, 0 leaks, 0 problems'
+stdout '^carol  may read  2 of 10 documents'
+stdout 'leak: carol, list: got merger-proposal'
+stdout 'leak: carol, read merger-proposal: HTTP 200, want 403'
+stdout '^FAIL: 4 users, 10 documents, 88 requests \(lists, title queries, reads\), \d+ leaks, 0 problems\. CLI for OpenArch \S+, Hyland OpenArch 1\.0\.90\.$'
+! stderr .
+
+! exec openarch demo check --semantic --model-url $MOCK_URL/v1 --output json
+stdout '"passed": false'
+stdout '"vectorSearch": true'
+stdout '"requests": 108'
+stdout 'leak: bob, vector search \\"Is there a confidential merger\?\\": got merger-proposal'
+
+# Without the demo documents there is nothing to check
+exec openarch demo reset --yes
+! exec openarch demo check
+stderr '10 of 10 demo documents are missing under /Demo'
+stderr 'openarch demo load'
+
+# Without the demo users there are no passwords to log in with
+cd $WORK
+exec openarch init --dir plain --context-name plain --non-interactive --memory 4g
+! exec openarch demo check --dir plain
+stderr 'demo user alice is not in config/users.yml'
+stderr 'openarch demo users'
