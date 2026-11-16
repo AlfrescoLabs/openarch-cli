@@ -1,15 +1,18 @@
 ## openarch skill install
 
-Write the skill to .claude/skills/openarch/SKILL.md
+Write the skills to .agents/skills and .claude/skills
 
 ### Synopsis
 
-Write the skill to .claude/skills/openarch/SKILL.md under the folder given by
---dir, or the current folder. In a project folder, agents use the skill for
-that project. With --dir ~ they use it in every project.
+Write each skill to .agents/skills/<name>/SKILL.md and
+.claude/skills/<name>/SKILL.md under the folder given by --dir, or the current
+folder. Agents that follow the cross-client convention of Agent Skills read
+.agents/skills; Claude Code reads .claude/skills. In a project folder, agents
+use the skills for that project. With --dir ~ they use them in every project.
 
-Run it again after an update of openarch to get the skill of the new release.
-A SKILL.md that differs from this release is replaced only with --force.
+Run it again after an update of openarch to get the skills of the new release.
+A SKILL.md that differs from this release is replaced only with --force;
+without it, nothing is written.
 
 ```
 openarch skill install [flags]
@@ -43,5 +46,5 @@ openarch skill install [flags]
 
 ### SEE ALSO
 
-* [openarch skill](openarch_skill.md)	 - Install the Agent Skill that teaches AI coding agents to use openarch
+* [openarch skill](openarch_skill.md)	 - Install the Agent Skills that teach AI agents to use openarch
 

@@ -108,7 +108,7 @@ How to call it from a program or an AI agent:
 - Run 'openarch help --output json' for every command, flag, default value, allowed value and exit code. 'openarch <command> --help --output json' describes one command.
 - Start with 'openarch doctor', then 'openarch init --dir <folder> --non-interactive', then 'openarch up --dir <folder>'.
 - For MCP clients, 'openarch mcp --dir <folder>' runs an MCP server on stdio with the same commands as tools (add --listen <port> for Streamable HTTP with a bearer token from 'openarch mcp token'). Add --allow-destructive for down, clean, restore and the other tools that delete data.
-- For coding agents that read Agent Skills, 'openarch skill install' writes .claude/skills/openarch/SKILL.md with the install flow and the fixes for common failures.
+- For AI agents that read Agent Skills, 'openarch skill install' writes two skills to .agents/skills and .claude/skills: openarch (the install flow and the fixes for common failures) and openarch-search (answer questions from the documents as one user, with only what that user may read).
 - Plugins: 'openarch <name>' runs an executable named openarch-<name> from PATH. 'openarch plugin list' shows them.
 
 ## Exit codes

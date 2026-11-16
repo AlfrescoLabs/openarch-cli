@@ -1,38 +1,55 @@
-# show prints the SKILL.md of the binary
+# show prints a SKILL.md of the binary, openarch by default
 exec openarch skill show
 stdout '^name: openarch$'
 stdout '^# Hyland OpenArch with the CLI for OpenArch$'
 ! stderr .
+exec openarch skill show openarch-search
+stdout '^name: openarch-search$'
+stdout 'Never use another context to find more'
+! exec openarch skill show nothing
+stderr 'no skill named "nothing"'
+stderr 'openarch, openarch-search'
 
 exec openarch skill show --output json
 stdout '"name": "openarch"'
 stdout '"content": "---\\nname: openarch'
 
-# install writes the skill under the current folder
+# install writes every skill to .agents/skills and .claude/skills
 exec openarch skill install
-stdout '^Installed the skill: .*SKILL.md$'
+stdout '^Installed:  .*\.agents/skills/openarch/SKILL.md$'
+stdout '^Installed:  .*\.claude/skills/openarch-search/SKILL.md$'
+exists .agents/skills/openarch/SKILL.md
+exists .agents/skills/openarch-search/SKILL.md
 exists .claude/skills/openarch/SKILL.md
+exists .claude/skills/openarch-search/SKILL.md
 exec openarch skill show
-cmp stdout .claude/skills/openarch/SKILL.md
+cmp stdout .agents/skills/openarch/SKILL.md
+exec openarch skill show openarch-search
+cmp stdout .claude/skills/openarch-search/SKILL.md
 
 # a second install changes nothing
 exec openarch skill install --output json
 stdout '"action": "unchanged"'
+! stdout '"action": "create"'
 
 # --dir picks another folder
 exec openarch skill install --dir proj --output json
+stdout '"skill": "openarch-search"'
 stdout '"action": "create"'
-exists proj/.claude/skills/openarch/SKILL.md
+exists proj/.agents/skills/openarch/SKILL.md
 
-# a changed file is kept unless --force
+# a changed file is kept unless --force, and nothing else is written
 cp edited.md proj/.claude/skills/openarch/SKILL.md
+rm proj/.agents/skills/openarch-search/SKILL.md
 ! exec openarch skill install --dir proj --output json
 stdout '"code": "usage"'
 stdout '"hint": "Use --force to replace it."'
 cmp proj/.claude/skills/openarch/SKILL.md edited.md
+! exists proj/.agents/skills/openarch-search/SKILL.md
 exec openarch skill install --dir proj --force --output json
 stdout '"action": "update"'
 ! cmp proj/.claude/skills/openarch/SKILL.md edited.md
+exists proj/.agents/skills/openarch-search/SKILL.md
 
 -- edited.md --
 my own notes

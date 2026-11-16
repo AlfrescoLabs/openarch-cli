@@ -1,21 +1,22 @@
 ## openarch skill show
 
-Print the skill
+Print a skill
 
 ### Synopsis
 
-Print the SKILL.md of this release. Use it for agents that read skills from
-another folder, or to read the skill before you install it.
+Print the SKILL.md of a skill of this release: openarch, openarch-search.
+The default is openarch. Use it for agents that read skills from another
+folder, or to read a skill before you install it.
 
 ```
-openarch skill show [flags]
+openarch skill show [<name>] [flags]
 ```
 
 ### Examples
 
 ```
   openarch skill show
-  openarch skill show > SKILL.md
+  openarch skill show openarch-search > SKILL.md
 ```
 
 ### Options
@@ -37,5 +38,5 @@ openarch skill show [flags]
 
 ### SEE ALSO
 
-* [openarch skill](openarch_skill.md)	 - Install the Agent Skill that teaches AI coding agents to use openarch
+* [openarch skill](openarch_skill.md)	 - Install the Agent Skills that teach AI agents to use openarch
 
