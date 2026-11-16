@@ -423,6 +423,7 @@ openarch up                                                 # apply the changes
 
 OpenArch answers queries with the documents that the caller may read. `openarch demo` shows it with
 three users and ten documents: the same query returns different documents for each user.
+For a step-by-step guide with the expected results, see [docs/permissions-demo.md](docs/permissions-demo.md).
 
 ```
 openarch init --dir my-openarch
