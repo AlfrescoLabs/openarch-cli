@@ -59,6 +59,9 @@ Inside a workspace, the default ports are the ones openarch.yaml publishes.`,
 			if err := app.Printer.Print(report); err != nil {
 				return err
 			}
+			if app.Printer.Format() != output.JSON {
+				writeDoctorFooter(app.Streams.Out)
+			}
 			if report.Failed() {
 				return output.Exit(output.ExitPrerequisite, "prerequisite check failed")
 			}

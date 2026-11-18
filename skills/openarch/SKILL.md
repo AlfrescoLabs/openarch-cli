@@ -77,6 +77,10 @@ Follow the `hint` before you try anything else.
   `sudo sysctl -w vm.max_map_count=262144`. Ask the user to run it.
 - `up` ends with exit code 4: run `status` to find the service that is not
   healthy, then `logs <service> --tail 100`.
+- Nothing above fixes it: tell the user to ask in the Hyland OpenArch group,
+  https://community.hyland.com/group/26-hyland-openarch, with the text output
+  of `openarch doctor`. Bugs in the CLI for OpenArch go to
+  https://github.com/AlfrescoLabs/openarch-cli/issues.
 
 ## Daily commands
 

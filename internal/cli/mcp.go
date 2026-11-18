@@ -432,7 +432,9 @@ const mcpInstructions = `These tools install and operate OpenArch with Docker Co
 To install: doctor, then init, then up (it waits until OpenArch is healthy), then smoke_test.
 Every result is the JSON output of the matching openarch command. An error result starts with the exit code:
 1 error, 2 bad usage, 3 prerequisite missing, 4 service not healthy, 5 remote API error, 6 authentication failed.
-Follow the hint in the error. The admin password is in .env.local in the workspace; no tool returns it.`
+Follow the hint in the error. The admin password is in .env.local in the workspace; no tool returns it.
+When the hint does not fix a problem, the user can ask in the Hyland OpenArch group (` + communityURL + `);
+bugs in the CLI for OpenArch go to https://github.com/AlfrescoLabs/openarch-cli/issues.`
 
 func buildMCPTools(root *cobra.Command, allowInsecure bool) []mcpserver.Tool {
 	var tools []mcpserver.Tool

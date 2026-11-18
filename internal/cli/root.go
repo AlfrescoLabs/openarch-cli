@@ -135,6 +135,7 @@ func execute(ctx context.Context, app *App, args []string) int {
 		p = output.NewPrinter(formatFromArgs(args), s.Out, s.Err)
 	}
 	p.Error(err)
+	writeErrorHelp(s.Err, p.Format(), err)
 	return int(output.CodeOf(err))
 }
 
