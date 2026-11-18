@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AlfrescoLabs/openarch-cli/internal/models"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
 )
 
@@ -22,6 +23,10 @@ type fake struct {
 	composeErr   string
 	busyPorts    map[int]bool
 	offline      bool
+	embedSize    int
+	embedErr     error
+	embedURL     string
+	embedModel   string
 	maxMapCount  string
 	dockerCalled int
 }
@@ -32,6 +37,7 @@ func newFake() *fake {
 		infoJSON:    info("Docker Desktop", 8, 8*gib),
 		composeOut:  "v2.29.1\n",
 		maxMapCount: "262144\n",
+		embedSize:   1024,
 	}
 }
 
@@ -76,6 +82,10 @@ func (f *fake) env() Env {
 				return nil, os.ErrNotExist
 			}
 			return []byte(f.maxMapCount), nil
+		},
+		EmbedSize: func(_ context.Context, url, model string) (int, error) {
+			f.embedURL, f.embedModel = url, model
+			return f.embedSize, f.embedErr
 		},
 	}
 }
@@ -283,5 +293,44 @@ func TestWriteText(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+func TestEmbedding(t *testing.T) {
+	opts := Options{Model: "ai/mxbai-embed-large", ModelURL: "http://localhost:12434/engines/v1"}
+	cases := []struct {
+		name   string
+		size   int
+		err    error
+		status Status
+		msg    string
+	}{
+		{"1024", 1024, nil, OK, "ai/mxbai-embed-large makes vectors of 1024 dimensions"},
+		{"smaller", 768, nil, OK, "768 dimensions, padded to 1024"},
+		{"larger", 1536, nil, Warn, "1536 dimensions, OpenArch takes at most 1024"},
+		{"no model API", 0, fmt.Errorf("%w at x: connection refused", models.ErrUnreachable), Skip, "needed only for vector search"},
+		{"not pulled", 0, &models.ModelError{Model: "ai/mxbai-embed-large", Status: 404}, Warn, "model ai/mxbai-embed-large is not pulled"},
+		{"other error", 0, errors.New("boom"), Warn, "cannot make an embedding: boom"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFake()
+			f.embedSize, f.embedErr = c.size, c.err
+			r := find(t, run(t, f, opts), "models.embedding")
+			if r.Status != c.status || !strings.Contains(r.Message, c.msg) {
+				t.Errorf("got %s %q, want %s with %q", r.Status, r.Message, c.status, c.msg)
+			}
+			if f.embedURL != opts.ModelURL || f.embedModel != opts.Model {
+				t.Errorf("EmbedSize called with %q %q", f.embedURL, f.embedModel)
+			}
+		})
+	}
+}
+
+func TestNoModelCheckWithoutModel(t *testing.T) {
+	f := newFake()
+	run(t, f, Options{})
+	if f.embedModel != "" {
+		t.Errorf("EmbedSize called without Options.Model")
 	}
 }

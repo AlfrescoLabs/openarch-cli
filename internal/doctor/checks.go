@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AlfrescoLabs/openarch-cli/internal/api"
+	"github.com/AlfrescoLabs/openarch-cli/internal/models"
 )
 
 const (
@@ -21,6 +25,8 @@ const (
 	minMaxMapCount = 262144
 	registryURL    = "https://ghcr.io/v2/"
 	commandTimeout = 20 * time.Second
+	// The first embedding also loads the model.
+	embedTimeout = 90 * time.Second
 )
 
 const installDockerFix = "Install Docker Desktop: https://docs.docker.com/get-started/get-docker/"
@@ -101,7 +107,11 @@ func checks(env Env, opts Options) []check {
 	for _, p := range ports {
 		cs = append(cs, check{fmt.Sprintf("port.%d", p), fmt.Sprintf("Port %d is free", p), portCheck(p, slices.Contains(opts.OwnPorts, p))})
 	}
-	return append(cs, check{"network.ghcr", "Access to ghcr.io", checkRegistry})
+	cs = append(cs, check{"network.ghcr", "Access to ghcr.io", checkRegistry})
+	if opts.Model != "" {
+		cs = append(cs, check{"models.embedding", "Embedding model for vector search", embeddingCheck(opts.ModelURL, opts.Model)})
+	}
+	return cs
 }
 
 func checkDockerCLI(_ context.Context, s *state) Result {
@@ -219,6 +229,32 @@ func checkRegistry(ctx context.Context, s *state) Result {
 			Fix: "Check your network and proxy settings. OpenArch images are pulled from ghcr.io; images already pulled still work offline."}
 	}
 	return Result{Status: OK, Message: "ghcr.io is reachable"}
+}
+
+// embeddingCheck makes one embedding. Vector search is optional, so a model API
+// that does not answer is a skip, and the other problems are warnings.
+func embeddingCheck(url, model string) func(context.Context, *state) Result {
+	return func(ctx context.Context, s *state) Result {
+		ctx, cancel := context.WithTimeout(ctx, embedTimeout)
+		defer cancel()
+		size, err := s.env.EmbedSize(ctx, url, model)
+		var merr *models.ModelError
+		switch {
+		case errors.Is(err, models.ErrUnreachable):
+			return Result{Status: Skip, Message: "skipped: no model API at " + url + ", needed only for vector search",
+				Fix: "For vector search, start Docker Model Runner with host TCP access: docker desktop enable model-runner --tcp 12434"}
+		case errors.As(err, &merr) && merr.Status == http.StatusNotFound:
+			return Result{Status: Warn, Message: "model " + model + " is not pulled", Fix: "docker model pull " + model}
+		case err != nil:
+			return Result{Status: Warn, Message: "cannot make an embedding: " + err.Error()}
+		case size > api.VectorDimension:
+			return Result{Status: Warn, Message: fmt.Sprintf("%s makes vectors of %d dimensions, OpenArch takes at most %d", model, size, api.VectorDimension),
+				Fix: "Use a model with 1024 dimensions or fewer, such as " + models.DefaultEmbedModel + ", with --model or OPENARCH_EMBED_MODEL."}
+		case size < api.VectorDimension:
+			return Result{Status: OK, Message: fmt.Sprintf("%s makes vectors of %d dimensions, padded to %d", model, size, api.VectorDimension)}
+		}
+		return Result{Status: OK, Message: fmt.Sprintf("%s makes vectors of %d dimensions", model, size)}
+	}
 }
 
 func (s *state) infoOrSkip(ctx context.Context) (dockerInfo, bool) {

@@ -95,7 +95,7 @@ func TestMCPCallDoctor(t *testing.T) {
 		isError  bool
 		want     string
 	}{
-		{false, false, `"ok": 7`},
+		{false, false, `"ok": 8`},
 		{true, true, "exit code 3 (prerequisite)"},
 	} {
 		app := newApp(Streams{Err: &strings.Builder{}})

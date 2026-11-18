@@ -60,6 +60,10 @@ type Options struct {
 	OwnPorts []int
 	// Only runs the checks with these IDs. Empty means all checks.
 	Only []string
+	// Model adds the models.embedding check for this embedding model, served by
+	// the OpenAI-compatible API at ModelURL. Empty means no model check.
+	Model    string
+	ModelURL string
 }
 
 type check struct {

@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/AlfrescoLabs/openarch-cli/internal/models"
 )
 
 // Env is the access to the system used by the checks. Tests replace it with fakes.
@@ -21,6 +23,8 @@ type Env struct {
 	// HTTPStatus returns the status code of a GET request, or an error if no response arrived.
 	HTTPStatus func(ctx context.Context, url string) (int, error)
 	ReadFile   func(name string) ([]byte, error)
+	// EmbedSize makes one embedding with the model of the API at url, and returns its size.
+	EmbedSize func(ctx context.Context, url, model string) (int, error)
 }
 
 // SystemEnv returns an Env backed by the real system.
@@ -32,7 +36,16 @@ func SystemEnv() Env {
 		PortFree:   portFree,
 		HTTPStatus: httpStatus,
 		ReadFile:   os.ReadFile,
+		EmbedSize:  embedSize,
 	}
+}
+
+func embedSize(ctx context.Context, url, model string) (int, error) {
+	v, err := models.NewClient(url).Embed(ctx, model, []string{"openarch doctor"})
+	if err != nil {
+		return 0, err
+	}
+	return len(v[0]), nil
 }
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {

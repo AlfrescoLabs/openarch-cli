@@ -26,6 +26,7 @@ func fakeDoctorEnv(portBusy bool) func() doctor.Env {
 			PortFree:   func(context.Context, int) bool { return !portBusy },
 			HTTPStatus: func(context.Context, string) (int, error) { return 401, nil },
 			ReadFile:   func(string) ([]byte, error) { return nil, errors.New("unused") },
+			EmbedSize:  func(context.Context, string, string) (int, error) { return 1024, nil },
 		}
 	}
 }
@@ -43,7 +44,7 @@ func runDoctor(t *testing.T, portBusy bool, args ...string) (int, string, string
 
 func TestDoctorHealthy(t *testing.T) {
 	code, stdout, stderr := runDoctor(t, false)
-	if code != 0 || !strings.Contains(stdout, "7 ok, 0 warn, 0 fail, 0 skip") || stderr != "" {
+	if code != 0 || !strings.Contains(stdout, "8 ok, 0 warn, 0 fail, 0 skip") || stderr != "" {
 		t.Errorf("code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 }

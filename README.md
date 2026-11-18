@@ -531,6 +531,8 @@ leaves them out of his results. The same holds for the counts.
   vector follows.
 - New vectors reach the search index a few seconds after `demo load`.
 - `openarch demo check --semantic` asks five questions as each user and checks the results.
+- `openarch doctor` makes one embedding with the model and checks its size. It skips that check when no
+  model API answers.
 - The query argument of `query --semantic`, when given, selects the documents to search, for example
   `"SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/HR/'"`.
 
