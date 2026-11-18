@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  Install and run <a href="https://github.com/hyland/OpenArch">Hyland OpenArch</a> with Docker Compose, from one command line tool.
+  Run <a href="https://github.com/hyland/OpenArch">Hyland OpenArch</a>, an open source data layer for AI that checks permissions at query time, on your laptop.
 </p>
 
 <p align="center">
@@ -25,6 +25,33 @@
 > **Not an official Hyland product.** The CLI for OpenArch (the `openarch` command) is not Hyland OpenArch. It is in the [AlfrescoLabs](https://github.com/AlfrescoLabs) organization on GitHub because Hyland does not officially support it. Hyland OpenArch itself is at [github.com/hyland/OpenArch](https://github.com/hyland/OpenArch).
 
 The CLI for OpenArch (`openarch`) is a command line tool to install and run [Hyland OpenArch](https://github.com/hyland/OpenArch) with Docker Compose.
+
+Hyland OpenArch is an open source data layer for AI. It stores documents, metadata, permissions and embeddings,
+and it answers queries with the documents that the caller may read. The CLI shows that with three demo users:
+alice, bob and carol run the same query and get different documents.
+
+## Try it
+
+```
+brew install AlfrescoLabs/tap/openarch     # Windows: see Install
+openarch init --dir my-openarch
+openarch demo users --dir my-openarch
+openarch up --dir my-openarch
+openarch demo load --dir my-openarch
+openarch demo check --dir my-openarch
+```
+
+The last line sums up the result:
+
+```
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.9.0, Hyland OpenArch 1.0.90.
+```
+
+The admin gets 10 documents, alice 6, bob 6 and carol 2. To see the documents of each user, follow
+[docs/permissions-demo.md](docs/permissions-demo.md). To ask questions with vector search and a local model,
+see [Semantic search](#semantic-search).
+
+## How it works
 
 It creates a workspace folder with plain files: `compose.yaml`, `.env`, `.env.local` and a few config files.
 You can read them, and you can run `docker compose` on them without the CLI.
@@ -463,7 +490,7 @@ openarch demo check --dir my-openarch
 ```
 
 ```
-PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.9.0, Hyland OpenArch 1.0.103.
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.9.0, Hyland OpenArch 1.0.90.
 ```
 
 A leak is the name, the code or the content of a document the user may not read. A problem is a
