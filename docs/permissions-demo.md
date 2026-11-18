@@ -4,7 +4,7 @@ Hyland OpenArch answers a query with only the documents that the caller may read
 with `openarch demo`: you run the same query as four users and compare the results. You need Docker and
 the CLI for OpenArch. You do not need Alfresco or an AI model.
 
-Tested with CLI for OpenArch 0.8.0 and Hyland OpenArch 1.0.103 on macOS (arm64), on 2026-11-16.
+Tested with CLI for OpenArch 0.9.0 and Hyland OpenArch 1.0.103 on macOS (arm64), on 2026-11-18.
 
 The video [Docker Extension for OpenArch 0.1 and CLI for OpenArch 0.6](https://youtu.be/GD_HLXCmYTA)
 shows an older version of this demo, with less sample data:
@@ -12,12 +12,12 @@ shows an older version of this demo, with less sample data:
 | Demo | Documents | admin | alice | bob | carol |
 | --- | --- | --- | --- | --- | --- |
 | CLI 0.6.0 (video) | 6 | 6 | 4 | 3 | not in the demo |
-| CLI 0.8.0 (this guide) | 10 | 10 | 6 | 6 | 2 |
+| CLI 0.8.0 and 0.9.0 (this guide) | 10 | 10 | 6 | 6 | 2 |
 
 ## 1. Prerequisites
 
 - Docker with Docker Compose, with about 4 GB of memory free for this stack.
-- CLI for OpenArch 0.8.0, from the [v0.8.0 release](https://github.com/AlfrescoLabs/openarch-cli/releases/tag/v0.8.0).
+- CLI for OpenArch 0.9.0, from the [v0.9.0 release](https://github.com/AlfrescoLabs/openarch-cli/releases/tag/v0.9.0).
 - Port 18088 free. This guide uses it so that it does not clash with a workspace on port 8080.
 - A terminal with bash or zsh, on macOS or Linux.
 
@@ -25,7 +25,7 @@ shows an older version of this demo, with less sample data:
 openarch version
 ```
 
-The counts in this guide are for 0.8.0. Another release can have other sample data: see
+The counts in this guide are for 0.9.0. Another release can have other sample data: see
 [Demo](../README.md#demo) in the README of that release. The first `up` pulls the container images, so
 it takes a few minutes.
 
@@ -119,7 +119,29 @@ openarch query "$DEMO_2027_QUERY" --context permissions-carol --sync --limit 50
 
 The filter acts on top of the permissions: a user never gets a document they may not read.
 
-## 6. Stop or remove the demo
+## 6. Check every user at once
+
+```
+openarch demo check --dir "$DEMO_WORKSPACE"
+```
+
+`demo check` logs in as the admin, alice, bob and carol, and compares what Hyland OpenArch returns with
+the access entries of the demo: document lists from the search index and from the database, title
+queries, and a read of every document by id. It prints one line per user and a result line:
+
+```
+admin  may read 10 of 10 documents: 22 requests, 0 leaks, 0 problems
+alice  may read  6 of 10 documents: 22 requests, 0 leaks, 0 problems
+bob    may read  6 of 10 documents: 22 requests, 0 leaks, 0 problems
+carol  may read  2 of 10 documents: 22 requests, 0 leaks, 0 problems
+
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.9.0, Hyland OpenArch 1.0.103.
+```
+
+A leak is the name, the code or the content of a document the user may not read. A problem is a
+document the user may read but does not get. The exit code is 0 when there is neither.
+
+## 7. Stop or remove the demo
 
 Stop the containers and keep the data:
 
@@ -151,8 +173,8 @@ rm -rf "$DEMO_ROOT"
 
 ## Next steps
 
-- Share your result: leave a comment under [the video](https://youtu.be/GD_HLXCmYTA) with your CLI
-  version and the four counts.
+- Share your result: leave a comment under [the video](https://youtu.be/GD_HLXCmYTA) with the last
+  line of `demo check`.
 - Something failed? [Open an issue](https://github.com/AlfrescoLabs/openarch-cli/issues) with the
   command and the error. Remove the passwords first.
 - Semantic search on the same demo, with a local model: see [Semantic search](../README.md#semantic-search).

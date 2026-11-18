@@ -84,7 +84,7 @@ The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPEN
 
 ## Commands
 
-The current release is 0.8.0. The commands:
+The current release is 0.9.0. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -100,7 +100,7 @@ The current release is 0.8.0. The commands:
 | `openarch query` | Runs a query and lists the documents found |
 | `openarch documents` | Gets, creates and lists documents, and uploads and downloads their files |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
-| `openarch demo` | Adds sample users and documents that show permission-aware search (`users`, `load`, `reset`). See [Demo](#demo) |
+| `openarch demo` | Adds sample users and documents that show permission-aware search (`users`, `load`, `check`, `reset`). See [Demo](#demo) |
 | `openarch credentials` | Shows the users and passwords of a local workspace |
 | `openarch smoke-test` | Checks OpenArch end to end: create, read, query and delete a document |
 | `openarch upgrade` | Changes the OpenArch version, then checks the result |
@@ -454,6 +454,22 @@ and the travel policy, bob the budget, the travel policy and the contractor rate
 Each document description ends with a reference code such as `oafx-01-hk4q`. It is unique, so a test
 can check that a user never gets the code of a document they may not read.
 
+`openarch demo check` runs that test. It logs in as the admin, alice, bob and carol, and compares what
+OpenArch returns with the access entries of the demo: document lists from the search index and from the
+database, title queries, and a read of every document by id. The last line sums up the result:
+
+```
+openarch demo check --dir my-openarch
+```
+
+```
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.9.0, Hyland OpenArch 1.0.103.
+```
+
+A leak is the name, the code or the content of a document the user may not read. A problem is a
+document the user may read but does not get. The exit code is 0 when there is neither, and 4 when
+there is at least one. `--semantic` also checks vector search (see [Semantic search](#semantic-search)).
+
 - `demo users` generates the passwords, and saves the contexts `<prefix>-alice`, `<prefix>-bob` and
   `<prefix>-carol`. The prefix is the name of the workspace context (`--context-name` of `init`, default
   `local`). OpenArch reads its users only at startup, so run `openarch up` after it.
@@ -487,6 +503,7 @@ leaves them out of his results. The same holds for the counts.
 - A vector has the read access of its document. When the access entries of the document change, the
   vector follows.
 - New vectors reach the search index a few seconds after `demo load`.
+- `openarch demo check --semantic` asks five questions as each user and checks the results.
 - The query argument of `query --semantic`, when given, selects the documents to search, for example
   `"SELECT * FROM SysFile WHERE sys_path STARTSWITH '/Demo/HR/'"`.
 
@@ -663,10 +680,15 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
 
 ## Agent Skill
 
-`openarch skill install` writes an [Agent Skill](https://agentskills.io) to
-`.claude/skills/openarch/SKILL.md`. Claude Code and other coding agents that read skills then know how
-to install and operate OpenArch with the CLI: the install flow, the JSON output, the exit codes and the
-fixes for common failures. The skill is part of the binary, so it matches the commands of the release.
+`openarch skill install` writes two [Agent Skills](https://agentskills.io) to `.agents/skills/<name>/SKILL.md`
+and `.claude/skills/<name>/SKILL.md`. Agents that follow the cross-client convention read `.agents/skills`;
+Claude Code reads `.claude/skills`. The skills are part of the binary, so they match the commands of the
+release.
+
+- `openarch`: how to install and operate OpenArch with the CLI: the install flow, the JSON output, the
+  exit codes and the fixes for common failures.
+- `openarch-search`: how to search as one user. The agent uses only the context of that user, never
+  another one to find more, and cites the title and id of each document.
 
 ```
 # For one project: run it in the project folder
@@ -675,17 +697,20 @@ openarch skill install
 # For every project
 openarch skill install --dir ~
 
-# Print it, for agents that read skills from another folder
+# Print a skill, for agents that read skills from another folder
 openarch skill show
+openarch skill show openarch-search
 ```
 
 Then ask the agent, for example: "Set up OpenArch for local development in ./openarch".
 
-Run `openarch skill install` again after an update to get the skill of the new release. A `SKILL.md`
-that you changed is replaced only with `--force`.
+Run `openarch skill install` again after an update to get the skills of the new release. A `SKILL.md`
+that you changed is replaced only with `--force`; without it, nothing is written.
 
 [examples/docker-agent/skill](examples/docker-agent/skill) installs OpenArch with a local agent that has
 only a shell and the skill, and lists the local models that work.
+[examples/docker-agent/search](examples/docker-agent/search) asks the same question as alice and as bob
+with a local agent and the `openarch-search` skill: alice gets the salary bands, bob does not.
 
 For an agent that does not read skills, add these lines to its instructions file:
 
