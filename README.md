@@ -808,6 +808,12 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
    [homebrew-tap](https://github.com/AlfrescoLabs/homebrew-tap) and
    [scoop-bucket](https://github.com/AlfrescoLabs/scoop-bucket).
 
+## Community
+
+Questions, ideas and "show what you built" go to the
+[Hyland OpenArch group](https://community.hyland.com/group/26-hyland-openarch) on Hyland Community.
+Bugs and feature requests for this project go to its GitHub issues.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
