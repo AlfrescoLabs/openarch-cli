@@ -16,8 +16,8 @@ stdout '"content": "---\\nname: openarch'
 
 # install writes every skill to .agents/skills and .claude/skills
 exec openarch skill install
-stdout '^Installed:  .*\.agents/skills/openarch/SKILL.md$'
-stdout '^Installed:  .*\.claude/skills/openarch-search/SKILL.md$'
+stdout '^Installed:  .*\.agents[\\/]skills[\\/]openarch[\\/]SKILL.md$'
+stdout '^Installed:  .*\.claude[\\/]skills[\\/]openarch-search[\\/]SKILL.md$'
 exists .agents/skills/openarch/SKILL.md
 exists .agents/skills/openarch-search/SKILL.md
 exists .claude/skills/openarch/SKILL.md
