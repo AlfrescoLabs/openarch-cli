@@ -8,7 +8,7 @@ metadata:
   author: AlfrescoLabs
   license: Apache-2.0
   description: One agent, two users. Answers only from the Hyland OpenArch documents that the user may read.
-  version: "0.1.0"
+  version: "0.1.1"
   tags: [openarch, mcp, permissions, docker-model-runner]
   readme: |
     One agent answers the same question for different users of Hyland
@@ -38,6 +38,10 @@ agents:
          the hit, not its "id": "id" names the passage, not the document.
       3. Answer from those documents only. Name the title and the id of each
          document you use.
+      A document may have only a title and a description, with no other text.
+      Then answer from the title and the description, and say that the
+      document has no more text. A document that documents_get returns is a
+      document the user may read: never say that the user lacks access to it.
       Every fact must come from a tool result. Never write a tool result
       yourself. When the search finds nothing about the question, say that you
       found no documents this user can read about it, and do not guess whether
