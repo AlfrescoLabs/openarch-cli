@@ -704,6 +704,8 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
   go to stderr.
 - [examples/docker-agent/install](examples/docker-agent/install) installs OpenArch with a local agent and a
   local model (Docker Agent and Docker Model Runner).
+- [examples/docker-agent/two-users](examples/docker-agent/two-users) runs one agent as alice and as bob:
+  `openarch mcp` logs in with `OPENARCH_CONTEXT`, so each user gets a different answer.
 - A result longer than `--max-result-bytes` (default 16384, about 4000 tokens) is cut, with a note that
   names the parameters for a smaller result. Use `0` for no limit.
 
