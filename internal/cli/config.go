@@ -66,6 +66,17 @@ func exactArgs(n int) cobra.PositionalArgs {
 	}
 }
 
+// minArgs is cobra.MinimumNArgs with a usage error.
+func minArgs(n int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) < n {
+			return output.Usage(fmt.Sprintf("%q needs at least %d argument(s), got %d", cmd.CommandPath(), n, len(args)),
+				"Run '"+cmd.CommandPath()+" --help' for usage.")
+		}
+		return nil
+	}
+}
+
 func (a *App) saveContexts(cfg contexts.Config) error {
 	dir, err := a.configDir()
 	if err != nil {

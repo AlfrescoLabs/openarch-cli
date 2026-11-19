@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -37,6 +38,10 @@ func (m *modelFlags) embedder() demo.Embedder {
 				"Start Docker Model Runner with host TCP access: docker desktop enable model-runner --tcp 12434. Or set --model-url.")
 		case errors.As(err, &merr) && merr.Status == http.StatusNotFound:
 			return nil, output.NewError(output.ExitPrerequisite, err.Error(), fmt.Sprintf("Pull the model: docker model pull %s", m.model))
+		case errors.As(err, &merr) && strings.Contains(merr.Body, "physical batch size"):
+			// The runner's default batch (512 tokens) is smaller than the input.
+			return nil, output.NewError(output.ExitPrerequisite, err.Error(), fmt.Sprintf(
+				"Give the model a larger context and batch: docker model configure --mode embedding --context-size 8192 %s -- --batch-size 8192 --ubatch-size 8192", m.model))
 		}
 		return v, err
 	}

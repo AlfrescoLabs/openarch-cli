@@ -92,6 +92,11 @@ func (c *Client) documentPathURL(path string) string {
 
 // raw sends a request and returns the status and the body.
 func (c *Client) raw(ctx context.Context, method, u string, body []byte) (int, []byte, error) {
+	return c.rawType(ctx, method, u, "application/json", body)
+}
+
+// rawType is raw with the content type of the body.
+func (c *Client) rawType(ctx context.Context, method, u, contentType string, body []byte) (int, []byte, error) {
 	var r io.Reader
 	if body != nil {
 		r = bytes.NewReader(body)
@@ -101,7 +106,7 @@ func (c *Client) raw(ctx context.Context, method, u string, body []byte) (int, [
 		return 0, nil, err
 	}
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
 	}
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.http.Do(req)

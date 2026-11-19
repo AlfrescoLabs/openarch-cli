@@ -125,6 +125,7 @@ The current release is 0.10.0. The commands:
 | `openarch api ping` | Checks that OpenArch answers and that the credentials work |
 | `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
 | `openarch query` | Runs a query and lists the documents found |
+| `openarch load` | Loads a corpus from load plans: documents, metadata and passages, with their vectors made by a local model. It can run again and skips what is stored |
 | `openarch documents` | Gets, creates and lists documents, and uploads and downloads their files |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch demo` | Adds sample users and documents that show permission-aware search (`users`, `load`, `check`, `reset`). See [Demo](#demo) |

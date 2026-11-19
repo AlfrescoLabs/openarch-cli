@@ -48,6 +48,9 @@ type EmbeddingRow struct {
 	ID     string
 	Text   string
 	Vector []float32
+	// Location, when set, is where the passage is in the document, as JSON,
+	// for example {"text":{"page":13,"paragraph":12}}.
+	Location string
 }
 
 // parquetRow is one row of the file OpenArch reads. It reads every column by
@@ -75,6 +78,9 @@ func EncodeEmbeddings(typ string, rows []EmbeddingRow) ([]byte, error) {
 			v[j] = float64(x)
 		}
 		out[i] = parquetRow{ID: r.ID, Type: &typ, Vector: v, Text: &r.Text}
+		if r.Location != "" {
+			out[i].Location = &r.Location
+		}
 	}
 	var buf bytes.Buffer
 	w := parquet.NewGenericWriter[parquetRow](&buf, parquet.Compression(&parquet.Snappy))

@@ -51,6 +51,7 @@ openarch [flags]
 * [openarch documents](openarch_documents.md)	 - Get, create, list, upload and download documents
 * [openarch down](openarch_down.md)	 - Stop OpenArch and remove its containers, keeping the data
 * [openarch init](openarch_init.md)	 - Create an OpenArch workspace
+* [openarch load](openarch_load.md)	 - Load a corpus of documents and passages from load plans
 * [openarch logs](openarch_logs.md)	 - Show the logs of the services
 * [openarch mcp](openarch_mcp.md)	 - Run an MCP server that exposes the commands as tools
 * [openarch migrate](openarch_migrate.md)	 - Update openarch.yaml to the schema of this openarch
