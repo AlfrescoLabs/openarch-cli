@@ -11,9 +11,19 @@ grep 'username: carol' config/users.yml
 grep 'name: demo-hr' config/users.yml
 grep 'name: demo-finance' config/users.yml
 exec openarch config list
-stdout 'oa-alice'
-stdout 'oa-bob'
-stdout 'oa-carol'
+stdout '^  oa-alice +workspace +.*ws as alice$'
+stdout '^  oa-bob +workspace +.*ws as bob$'
+stdout '^  oa-carol +workspace +.*ws as carol$'
+grep 'user: alice' $WORK/.openarch/config.yaml
+
+# A demo context uses the workspace address, with the user's own stored password
+exec openarch config whoami --context oa-alice
+stdout 'url       http://localhost:8080  \(from context oa-alice\)'
+stdout 'user      alice  \(from context oa-alice\)'
+stdout 'password  set  \(from context oa-alice\)'
+exec openarch config get --name oa-bob --show-secrets
+stdout 'username  bob'
+stdout 'password  [A-Za-z0-9]{20}'
 
 # credentials shows the admin and the demo users, with their passwords
 exec openarch credentials
@@ -67,8 +77,18 @@ env OPENARCH_URL=
 env OPENARCH_USER=
 env OPENARCH_PASSWORD=
 
-# A context name used by something else is an error
+# A remote context with the workspace URL and the same user becomes a workspace context
 cd $WORK
+stdin password.txt
+exec openarch config set --name old-alice -s http://localhost:8080 -u alice --password-stdin --no-verify
+exec openarch demo users --dir ws --context-prefix old
+exec openarch config list
+stdout '^. old-alice +workspace +.*ws as alice$'
+exec openarch credentials --dir ws
+stdout '^alice +[A-Za-z0-9]{20}  \(context oa-alice\)'
+stdout '^alice +[A-Za-z0-9]{20}  \(context old-alice\)'
+
+# A context name used by something else is an error
 exec openarch init --dir other --context-name clash-alice --non-interactive --memory 4g
 ! exec openarch demo users --dir ws --context-prefix clash
 stderr 'context "clash-alice" already exists and points somewhere else'
@@ -82,3 +102,6 @@ stderr 'bundled in the OpenArch image'
 mkdir empty
 ! exec openarch credentials --dir empty
 stderr 'openarch init'
+
+-- password.txt --
+Remote-pass-1

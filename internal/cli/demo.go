@@ -267,6 +267,17 @@ func (r DemoUsers) WriteText(w io.Writer) error {
 	return err
 }
 
+// isDemoContext reports whether c is the context of a demo user in the workspace dir.
+// A remote context with the workspace URL and the same user also matches: it is
+// replaced by a workspace context.
+func isDemoContext(c contexts.Context, dir, url, user string) bool {
+	if c.Workspace != "" {
+		return c.Workspace == dir && c.User == user
+	}
+	ep, ok := c.Endpoints[contexts.SystemOpenArch]
+	return ok && len(c.Endpoints) == 1 && strings.TrimSuffix(ep.URL, "/") == url && ep.Username == user
+}
+
 func newDemoUsersCmd(app *App) *cobra.Command {
 	var prefix string
 	cmd := &cobra.Command{
@@ -274,7 +285,8 @@ func newDemoUsersCmd(app *App) *cobra.Command {
 		Short: "Add the demo users and a context for each one",
 		Long: `Add the demo users alice, bob and carol to config/users.yml, with
 generated passwords. Each user gets a context named <prefix>-<user>, with the password in
-the credential store, for use with --context.
+the credential store, for use with --context. The context points to the
+workspace, so it uses the workspace address and certificate.
 
 The prefix is the name of the workspace context, for example local. A user
 that already has a working stored password keeps it, so the command can run
@@ -305,12 +317,9 @@ again. Workspaces with the users bundled in the OpenArch image
 				if err := contexts.ValidateName(name); err != nil {
 					return err
 				}
-				if c, ok := ctxs.Contexts[name]; ok {
-					ep := c.Endpoints[contexts.SystemOpenArch]
-					if c.Workspace != "" || ep.URL != url || ep.Username != u.Name {
-						return output.Usage(fmt.Sprintf("context %q already exists and points somewhere else", name),
-							"Use another --context-prefix, or delete it with 'openarch config delete "+name+"'.")
-					}
+				if c, ok := ctxs.Contexts[name]; ok && !isDemoContext(c, dir, url, u.Name) {
+					return output.Usage(fmt.Sprintf("context %q already exists and points somewhere else", name),
+						"Use another --context-prefix, or delete it with 'openarch config delete "+name+"'.")
 				}
 				names[u.Name] = name
 			}
@@ -348,9 +357,7 @@ again. Workspaces with the users bundled in the OpenArch image
 				if ctxs.Contexts == nil {
 					ctxs.Contexts = map[string]contexts.Context{}
 				}
-				ctxs.Contexts[names[u.Name]] = contexts.Context{Endpoints: map[string]contexts.Endpoint{
-					contexts.SystemOpenArch: {URL: url, Username: u.Name},
-				}}
+				ctxs.Contexts[names[u.Name]] = contexts.Context{Workspace: dir, User: u.Name}
 				res.Users = append(res.Users, DemoUser{Username: u.Name, Groups: u.ExtraGroups(), Context: names[u.Name], Action: action})
 			}
 			if res.Restart {

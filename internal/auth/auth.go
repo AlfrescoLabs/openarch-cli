@@ -251,24 +251,34 @@ func findBase(in Input, getenv func(string) string) (*base, error) {
 			return nil, output.Usage(fmt.Sprintf("context %q points to %s, which has no %s", name, ctx.Workspace, workspace.ConfigFile),
 				"Delete it with 'openarch config delete "+name+"'.")
 		}
-		return info.base(SourceContext, name), nil
+		b := info.base(SourceContext, name)
+		if ctx.User != "" && ctx.User != b.user {
+			// Another workspace user never gets the admin password.
+			b.user, b.password, b.lookup = ctx.User, "", storeLookup(in, b.url)
+		}
+		return b, nil
 	}
 	ep, ok := ctx.Endpoints[contexts.SystemOpenArch]
 	if !ok {
 		return nil, output.Usage(fmt.Sprintf("context %q has no OpenArch endpoint", name), "Add one with 'openarch config set --name "+name+"'.")
 	}
-	b := &base{source: SourceContext, context: name, url: ep.URL, user: ep.Username, insecure: ep.Insecure}
-	if in.Store != nil {
-		url := strings.TrimSuffix(ep.URL, "/")
-		b.lookup = func(user string) (string, error) {
-			st, err := in.Store()
-			if err != nil {
-				return "", err
-			}
-			return st.Get(url, user)
-		}
+	return &base{source: SourceContext, context: name, url: ep.URL, user: ep.Username, insecure: ep.Insecure,
+		lookup: storeLookup(in, ep.URL)}, nil
+}
+
+// storeLookup reads passwords for url from the credential store, or is nil without a store.
+func storeLookup(in Input, url string) func(user string) (string, error) {
+	if in.Store == nil {
+		return nil
 	}
-	return b, nil
+	url = strings.TrimSuffix(url, "/")
+	return func(user string) (string, error) {
+		st, err := in.Store()
+		if err != nil {
+			return "", err
+		}
+		return st.Get(url, user)
+	}
 }
 
 // Describe says where the credentials came from, for error hints. It never shows the password.

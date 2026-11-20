@@ -39,7 +39,10 @@ type Endpoint struct {
 
 // Context is a named connection: a local workspace, or remote endpoints.
 type Context struct {
-	Workspace string              `yaml:"workspace,omitempty" json:"workspace,omitempty"`
+	Workspace string `yaml:"workspace,omitempty" json:"workspace,omitempty"`
+	// User is a workspace user other than the admin, such as a demo user. Its password
+	// is in the credential store, under the workspace URL.
+	User      string              `yaml:"user,omitempty" json:"user,omitempty"`
 	Endpoints map[string]Endpoint `yaml:"endpoints,omitempty" json:"endpoints,omitempty"`
 }
 
@@ -153,10 +156,10 @@ func (c Config) Get(name string) (Context, error) {
 	return ctx, nil
 }
 
-// NameForWorkspace returns the name of the context that points to dir, or "".
+// NameForWorkspace returns the name of the admin context that points to dir, or "".
 func (c Config) NameForWorkspace(dir string) string {
 	for _, n := range c.Names() {
-		if c.Contexts[n].Workspace == dir {
+		if c.Contexts[n].Workspace == dir && c.Contexts[n].User == "" {
 			return n
 		}
 	}

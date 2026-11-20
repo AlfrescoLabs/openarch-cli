@@ -5,8 +5,8 @@ Show the users and passwords of a local workspace
 ### Synopsis
 
 Show the users and passwords of a local workspace: the admin user from
-.env.local, and the users of the contexts that point to the workspace URL,
-such as the users of 'openarch demo users', from the credential store.
+.env.local, and the users of the other contexts of the workspace, such as
+the users of 'openarch demo users', from the credential store.
 
 The passwords are shown in clear text. Use this on your own machine only.
 

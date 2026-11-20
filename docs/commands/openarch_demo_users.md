@@ -6,7 +6,8 @@ Add the demo users and a context for each one
 
 Add the demo users alice, bob and carol to config/users.yml, with
 generated passwords. Each user gets a context named <prefix>-<user>, with the password in
-the credential store, for use with --context.
+the credential store, for use with --context. The context points to the
+workspace, so it uses the workspace address and certificate.
 
 The prefix is the name of the workspace context, for example local. A user
 that already has a working stored password keeps it, so the command can run

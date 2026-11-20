@@ -10,6 +10,7 @@ import (
 	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
 	"github.com/AlfrescoLabs/openarch-cli/internal/output"
+	"github.com/AlfrescoLabs/openarch-cli/internal/templates"
 	"github.com/AlfrescoLabs/openarch-cli/internal/workspace"
 )
 
@@ -189,5 +190,52 @@ func TestWorkspaceContext(t *testing.T) {
 	}
 	if d := c.Describe(); !strings.Contains(d, `context "local"`) || strings.Contains(d, "ws-password") {
 		t.Errorf("Describe = %q", d)
+	}
+}
+
+func TestWorkspaceUserContext(t *testing.T) {
+	dir := t.TempDir()
+	cfg := workspace.Default("ws")
+	cfg.TLS.Mode, cfg.Port = workspace.TLSSelfSigned, 18443
+	s := localenv.Env{AdminUser: "admin", AdminPassword: "ws-password"}
+	if err := os.WriteFile(filepath.Join(dir, workspace.ConfigFile), cfg.Marshal(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, localenv.File), s.Marshal(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cert := filepath.Join(dir, filepath.FromSlash(templates.SelfSignedCert))
+	if err := os.MkdirAll(filepath.Dir(cert), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cert, []byte("test cert"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m := &credstore.Memory{}
+	if err := m.Set(strings.TrimSuffix(cfg.URL(), "/"), "alice", "alice-pw"); err != nil {
+		t.Fatal(err)
+	}
+	store := func() (credstore.Store, error) { return m, nil }
+	ctxs := &contexts.Config{Contexts: map[string]contexts.Context{
+		"oa-alice": {Workspace: dir, User: "alice"},
+		"oa-bob":   {Workspace: dir, User: "bob"},
+	}}
+
+	// The user gets the workspace address and certificate, and its own stored password.
+	c, err := Resolve(Input{Getenv: env(nil), Context: "oa-alice", Contexts: ctxs, Store: store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.User != "alice" || c.Password != "alice-pw" || c.Workspace != dir || c.DialAddr == "" || string(c.RootCAPEM) != "test cert" {
+		t.Errorf("credentials = %+v", c)
+	}
+	// A user with no stored password never gets the admin password.
+	_, err = Resolve(Input{Getenv: env(nil), Context: "oa-bob", Contexts: ctxs, Store: store})
+	if output.CodeOf(err) != output.ExitAuth {
+		t.Errorf("bob: %v", err)
+	}
+	_, err = Resolve(Input{Getenv: env(nil), Context: "oa-alice", Contexts: ctxs, Store: store, User: "admin"})
+	if output.CodeOf(err) != output.ExitAuth {
+		t.Errorf("admin through the alice context: %v", err)
 	}
 }

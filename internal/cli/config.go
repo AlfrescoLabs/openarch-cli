@@ -230,6 +230,7 @@ type ContextView struct {
 	Kind      string                  `json:"kind"`
 	Current   bool                    `json:"current"`
 	Workspace string                  `json:"workspace,omitempty"`
+	User      string                  `json:"user,omitempty"`
 	Endpoints map[string]EndpointView `json:"endpoints,omitempty"`
 }
 
@@ -267,7 +268,7 @@ func (a *App) view(cfg contexts.Config, name string, showSecrets bool) (ContextV
 	if err != nil {
 		return ContextView{}, err
 	}
-	v := ContextView{Name: name, Kind: ctx.Kind(), Current: cfg.CurrentContext == name, Workspace: ctx.Workspace}
+	v := ContextView{Name: name, Kind: ctx.Kind(), Current: cfg.CurrentContext == name, Workspace: ctx.Workspace, User: ctx.User}
 	reveal := func(get func() (string, error)) string {
 		if !showSecrets {
 			return masked
@@ -288,10 +289,17 @@ func (a *App) view(cfg contexts.Config, name string, showSecrets bool) (ContextV
 		}
 		data, _ := os.ReadFile(filepath.Join(ctx.Workspace, localenv.File))
 		secrets := localenv.Parse(data)
-		v.Endpoints = map[string]EndpointView{contexts.SystemOpenArch: {
-			URL: ws.URL(), Username: secrets.AdminUser,
-			Password: reveal(func() (string, error) { return secrets.AdminPassword, nil }),
-		}}
+		user, get := secrets.AdminUser, func() (string, error) { return secrets.AdminPassword, nil }
+		if ctx.User != "" && ctx.User != user {
+			user, get = ctx.User, func() (string, error) {
+				st, err := a.store()
+				if err != nil {
+					return "", err
+				}
+				return st.Get(strings.TrimSuffix(ws.URL(), "/"), ctx.User)
+			}
+		}
+		v.Endpoints = map[string]EndpointView{contexts.SystemOpenArch: {URL: ws.URL(), Username: user, Password: reveal(get)}}
 		return v, nil
 	}
 	v.Endpoints = map[string]EndpointView{}
@@ -362,6 +370,9 @@ func (l ContextList) WriteText(w io.Writer) error {
 			mark = "*"
 		}
 		target := c.Workspace
+		if c.User != "" {
+			target += " as " + c.User
+		}
 		if e, ok := c.Endpoints[contexts.SystemOpenArch]; ok && c.Workspace == "" {
 			target = e.URL + " as " + e.Username
 		}
@@ -385,7 +396,7 @@ func newConfigListCmd(app *App) *cobra.Command {
 			l := ContextList{Current: cfg.CurrentContext, Contexts: []ContextView{}}
 			for _, n := range cfg.Names() {
 				ctx := cfg.Contexts[n]
-				v := ContextView{Name: n, Kind: ctx.Kind(), Current: n == cfg.CurrentContext, Workspace: ctx.Workspace}
+				v := ContextView{Name: n, Kind: ctx.Kind(), Current: n == cfg.CurrentContext, Workspace: ctx.Workspace, User: ctx.User}
 				if ctx.Workspace == "" {
 					v.Endpoints = map[string]EndpointView{}
 					for system, e := range ctx.Endpoints {

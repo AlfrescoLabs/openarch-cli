@@ -46,8 +46,8 @@ func newCredentialsCmd(app *App) *cobra.Command {
 		Use:   "credentials",
 		Short: "Show the users and passwords of a local workspace",
 		Long: `Show the users and passwords of a local workspace: the admin user from
-.env.local, and the users of the contexts that point to the workspace URL,
-such as the users of 'openarch demo users', from the credential store.
+.env.local, and the users of the other contexts of the workspace, such as
+the users of 'openarch demo users', from the credential store.
 
 The passwords are shown in clear text. Use this on your own machine only.`,
 		Example: `  openarch credentials
@@ -76,12 +76,19 @@ The passwords are shown in clear text. Use this on your own machine only.`,
 			}
 			for _, name := range ctxs.Names() {
 				c := ctxs.Contexts[name]
-				ep, ok := c.Endpoints[contexts.SystemOpenArch]
-				if c.Workspace != "" || !ok || strings.TrimSuffix(ep.URL, "/") != url {
+				user := c.User
+				if c.Workspace != dir {
+					ep, ok := c.Endpoints[contexts.SystemOpenArch]
+					if c.Workspace != "" || !ok || strings.TrimSuffix(ep.URL, "/") != url {
+						continue
+					}
+					user = ep.Username
+				}
+				if user == "" {
 					continue
 				}
-				pw, _ := st.Get(url, ep.Username)
-				res.Users = append(res.Users, Credential{Username: ep.Username, Password: pw, Context: name})
+				pw, _ := st.Get(url, user)
+				res.Users = append(res.Users, Credential{Username: user, Password: pw, Context: name})
 			}
 			app.Printer.Warn("The passwords are shown in clear text.")
 			return app.Printer.Print(res)
