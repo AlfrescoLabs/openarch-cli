@@ -252,7 +252,7 @@ func Load(ctx context.Context, c Client, files []string, o Options) (Result, err
 				}
 				if o.Progress != nil {
 					s := time.Since(start).Seconds()
-					fmt.Fprintf(o.Progress, "Loaded %d/%d plans, %d documents, %d passages, %.0f s, %.1f passages/s, %d errors\n",
+					_, _ = fmt.Fprintf(o.Progress, "Loaded %d/%d plans, %d documents, %d passages, %.0f s, %.1f passages/s, %d errors\n",
 						res.Loaded, len(todo), res.Documents, res.Passages, s, float64(res.Passages)/max(s, 1), len(res.Errors))
 				}
 				mu.Unlock()
