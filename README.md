@@ -44,7 +44,7 @@ openarch demo check --dir my-openarch
 The last line sums up the result:
 
 ```
-PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.10.0, Hyland OpenArch 1.0.90.
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.11.0, Hyland OpenArch 1.0.90.
 ```
 
 The admin gets 10 documents, alice 6, bob 6 and carol 2. To see the documents of each user, follow
@@ -111,7 +111,7 @@ The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPEN
 
 ## Commands
 
-The current release is 0.10.0. The commands:
+The current release is 0.11.0. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -491,7 +491,7 @@ openarch demo check --dir my-openarch
 ```
 
 ```
-PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.10.0, Hyland OpenArch 1.0.90.
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.11.0, Hyland OpenArch 1.0.90.
 ```
 
 A leak is the name, the code or the content of a document the user may not read. A problem is a
@@ -500,7 +500,8 @@ there is at least one. `--semantic` also checks vector search (see [Semantic sea
 
 - `demo users` generates the passwords, and saves the contexts `<prefix>-alice`, `<prefix>-bob` and
   `<prefix>-carol`. The prefix is the name of the workspace context (`--context-name` of `init`, default
-  `local`). OpenArch reads its users only at startup, so run `openarch up` after it.
+  `local`). The contexts point to the workspace, so they work with every `--tls` mode. OpenArch reads
+  its users only at startup, so run `openarch up` after it.
 - `demo load` works as the workspace admin. When `/Demo` exists it loads nothing; `--force` deletes it
   first. `demo reset` deletes `/Demo`. The users stay.
 - The documents have metadata only (title and description): OpenArch does not extract text from files.
