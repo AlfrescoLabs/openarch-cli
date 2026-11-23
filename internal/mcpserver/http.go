@@ -16,10 +16,6 @@ import (
 // Path is the URL path of the Streamable HTTP endpoint.
 const Path = "/mcp"
 
-// sessionTimeout closes the sessions of clients that went away without a
-// DELETE request.
-const sessionTimeout = 30 * time.Minute
-
 // shutdownTimeout is how long open requests may run after the server stops.
 const shutdownTimeout = 5 * time.Second
 
@@ -33,13 +29,22 @@ type HTTPOptions struct {
 }
 
 // Handler returns the HTTP handler of one server for all clients, so that
-// the commands that change the workspace still run one at a time. go-sdk
-// rejects requests to a loopback address with another Host header (DNS
-// rebinding). The handler also rejects browser requests from another origin.
+// the commands that change the workspace still run one at a time.
+//
+// The handler is stateless, as MCP 2026-07-28 requires: every POST is one
+// request with a temporary session, and GET and DELETE answer 405. The
+// server sends no requests to the client, and progress notifications go on
+// the response stream of the tool call, so nothing needs a session. Clients
+// on older protocol versions still work: go-sdk gives each of their requests
+// the state of an initialized session.
+//
+// go-sdk rejects requests to a loopback address with another Host header
+// (DNS rebinding). The handler also rejects browser requests from another
+// origin.
 func Handler(opts Options, token string) http.Handler {
 	s := New(opts)
 	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s },
-		&mcp.StreamableHTTPOptions{SessionTimeout: sessionTimeout})
+		&mcp.StreamableHTTPOptions{Stateless: true})
 	mux := http.NewServeMux()
 	mux.Handle(Path, http.NewCrossOriginProtection().Handler(h))
 	if token == "" {
@@ -81,7 +86,7 @@ func ServeHTTP(ctx context.Context, l net.Listener, opts Options, hopts HTTPOpti
 	}
 	sctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	// Open event streams never end by themselves, so Shutdown can time out.
+	// A long tool call (up waits for the stack) can outlast the timeout.
 	if err := srv.Shutdown(sctx); err != nil {
 		_ = srv.Close()
 	}

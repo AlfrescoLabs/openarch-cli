@@ -10,7 +10,9 @@ and operate OpenArch with the same commands as the CLI.
 The server runs on stdin and stdout. With --listen it serves Streamable HTTP
 on host:port instead, at the path /mcp, for remote agents or several
 clients. A port alone means 127.0.0.1, so --listen 8765 is 127.0.0.1:8765.
-It prints its URL, then runs until it is stopped.
+It prints its URL, then runs until it is stopped. HTTP is stateless (MCP
+2026-07-28): every request stands alone, with no session. Clients on older
+protocol versions work too.
 
 Every HTTP request needs the header "Authorization: Bearer <token>";
 'openarch mcp token' prints the token. --no-auth turns the token off. On an

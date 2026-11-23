@@ -63,18 +63,29 @@ func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return b.next.RoundTrip(r)
 }
 
-func connectHTTP(t *testing.T, url string, client *http.Client, copts *mcp.ClientOptions) (*mcp.ClientSession, error) {
+// connectHTTP connects a client on the protocol version, or on the latest
+// version when it is empty.
+func connectHTTP(t *testing.T, url string, client *http.Client, copts *mcp.ClientOptions, version string) (*mcp.ClientSession, error) {
 	t.Helper()
 	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, copts).
-		Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: url, HTTPClient: client, MaxRetries: -1}, nil)
+		Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: url, HTTPClient: client, MaxRetries: -1},
+			&mcp.ClientSessionOptions{ProtocolVersion: version})
 	if err == nil {
 		t.Cleanup(func() { _ = cs.Close() })
 	}
 	return cs, err
 }
 
+// TestHTTPCall calls a tool on the stateless protocol and on the older
+// protocol with a handshake. Both get the result and the progress.
 func TestHTTPCall(t *testing.T) {
 	url := serve(t, upOptions, HTTPOptions{Token: "s3cret"})
+	for _, version := range []string{"2026-07-28", "2025-11-25", "2025-06-18"} {
+		t.Run(version, func(t *testing.T) { testHTTPCall(t, url, version) })
+	}
+}
+
+func testHTTPCall(t *testing.T, url, version string) {
 	var mu sync.Mutex
 	var messages []string
 	cs, err := connectHTTP(t, url, &http.Client{Transport: bearer{"s3cret", http.DefaultTransport}},
@@ -82,9 +93,16 @@ func TestHTTPCall(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			messages = append(messages, req.Params.Message)
-		}})
+		}}, version)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got := cs.InitializeResult().ProtocolVersion; got != version {
+		t.Errorf("protocol version %s, want %s", got, version)
+	}
+	tools, err := cs.ListTools(context.Background(), nil)
+	if err != nil || len(tools.Tools) != 1 {
+		t.Fatalf("tools = %+v, %v", tools, err)
 	}
 	params := &mcp.CallToolParams{Name: "up", Arguments: map[string]any{}}
 	params.SetProgressToken("t1")
@@ -112,10 +130,18 @@ func TestHTTPCall(t *testing.T) {
 const initialize = `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`
 
 // post sends an initialize request and returns the status and the header of
-// the response. It reads the whole body, so that the server can stop at once.
+// the response.
 func post(t *testing.T, url string, header map[string]string) (int, http.Header) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, strings.NewReader(initialize))
+	return send(t, http.MethodPost, url, header)
+}
+
+// send sends a request with the initialize body and returns the status and
+// the header of the response. It reads the whole body, so that the server
+// can stop at once.
+func send(t *testing.T, method, url string, header map[string]string) (int, http.Header) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(context.Background(), method, url, strings.NewReader(initialize))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,11 +181,14 @@ func TestHTTPToken(t *testing.T) {
 		if status != c.want {
 			t.Errorf("%s: status %d, want %d", c.name, status, c.want)
 		}
+		if id := header.Get("Mcp-Session-Id"); id != "" {
+			t.Errorf("%s: session id %q from a stateless server", c.name, id)
+		}
 		if c.want == http.StatusUnauthorized && !strings.HasPrefix(header.Get("WWW-Authenticate"), "Bearer") {
 			t.Errorf("%s: WWW-Authenticate = %q", c.name, header.Get("WWW-Authenticate"))
 		}
 	}
-	if _, err := connectHTTP(t, url, nil, nil); err == nil {
+	if _, err := connectHTTP(t, url, nil, nil, ""); err == nil {
 		t.Error("a client without the token connected")
 	}
 }
@@ -171,6 +200,12 @@ func TestHTTPNoToken(t *testing.T) {
 	}
 	if status, _ := post(t, strings.TrimSuffix(url, Path)+"/other", nil); status != http.StatusNotFound {
 		t.Errorf("status %d on another path", status)
+	}
+	// A stateless server has no event stream and no session to delete.
+	for _, method := range []string{http.MethodGet, http.MethodDelete} {
+		if status, header := send(t, method, url, map[string]string{"Mcp-Session-Id": "x"}); status != http.StatusMethodNotAllowed || header.Get("Allow") != "POST" {
+			t.Errorf("%s: status %d, Allow %q", method, status, header.Get("Allow"))
+		}
 	}
 }
 
@@ -187,7 +222,7 @@ func TestHTTPTLS(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM(certPEM)
 	tr := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}}
-	cs, err := connectHTTP(t, url, &http.Client{Transport: bearer{"s3cret", tr}}, nil)
+	cs, err := connectHTTP(t, url, &http.Client{Transport: bearer{"s3cret", tr}}, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
