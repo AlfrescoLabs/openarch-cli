@@ -119,6 +119,9 @@ func TestDestructiveToolsNeedPermission(t *testing.T) {
 	if got := toolNames(t, connect(t, Options{Name: "x", Version: "1", Tools: tools, Run: run, AllowDestructive: true}, nil)); !slices.Equal(got, []string{"clean", "status", "up"}) {
 		t.Errorf("tools with --allow-destructive = %v", got)
 	}
+	if got := toolNames(t, connect(t, Options{Name: "x", Version: "1", Tools: tools, Run: run, ReadOnly: true}, nil)); !slices.Equal(got, []string{"status"}) {
+		t.Errorf("tools with --read-only = %v", got)
+	}
 }
 
 func TestCall(t *testing.T) {

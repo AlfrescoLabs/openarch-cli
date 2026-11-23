@@ -697,6 +697,9 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
 - `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
 - Tools that stop services or delete data (`down`, `clean`, `restore`, `secrets_rotate`, `users_delete`,
   `config_delete`) exist only with `--allow-destructive`.
+- `--read-only` keeps only the tools that read (`doctor`, `status`, `logs`, `api_ping`, `query`,
+  `documents_get`, `documents_list`, `users_list`, `config_list`, `config_whoami`, `version`), for agents
+  that only search or check.
 - The `init` tool always keeps the secure defaults. Its options that can turn security off
   (`default-users`, `insecure-backends`, `bind-ip`, `expose`, `tls`, `cert`, `key`, `from`) exist only
   with `--allow-insecure`.

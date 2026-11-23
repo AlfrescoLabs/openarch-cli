@@ -33,6 +33,10 @@ returns one.
 Tools that stop services or delete data (down, clean, restore, secrets
 rotate, users delete, config delete) exist only with --allow-destructive.
 
+--read-only keeps only the tools that read (doctor, status, logs, api_ping,
+query, documents_get, documents_list, users_list, config_list,
+config_whoami, version), for agents that only search or check.
+
 The init tool always keeps the secure defaults. Its options that can turn
 security off (default-users, insecure-backends, bind-ip, expose, tls, cert,
 key, from) exist only with --allow-insecure.
@@ -49,6 +53,7 @@ openarch mcp [flags]
 ```
   openarch mcp --dir my-openarch
   openarch mcp --dir my-openarch --allow-destructive
+  openarch mcp --context alice --read-only
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
   openarch mcp --dir my-openarch --listen 8765
   claude mcp add --transport http openarch http://127.0.0.1:8765/mcp --header "Authorization: Bearer $(openarch mcp token)"
@@ -67,6 +72,7 @@ openarch mcp [flags]
       --listen string          serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1
       --max-result-bytes int   cut longer tool results, for models with a small context; 0: no limit (default 16384)
       --no-auth                serve HTTP without the bearer token
+      --read-only              keep only the tools that read
       --server-name string     host name of the certificate (default: the --listen host)
       --tls string             HTTPS mode: none, self-signed, custom (default "none")
 ```

@@ -80,6 +80,8 @@ type Options struct {
 	Prefix []string
 	// AllowDestructive registers the destructive tools. Without it they do not exist.
 	AllowDestructive bool
+	// ReadOnly registers only the read-only tools. It wins over AllowDestructive.
+	ReadOnly bool
 	// Log receives the stderr of every command.
 	Log io.Writer
 	// MaxResultBytes cuts longer results, so that one result cannot fill the
@@ -94,7 +96,7 @@ func New(opts Options) *mcp.Server {
 	// Commands that change the workspace run one at a time.
 	var mu sync.Mutex
 	for _, t := range opts.Tools {
-		if t.Kind == Destructive && !opts.AllowDestructive {
+		if t.Kind == Destructive && !opts.AllowDestructive || opts.ReadOnly && t.Kind != ReadOnly {
 			continue
 		}
 		s.AddTool(&mcp.Tool{

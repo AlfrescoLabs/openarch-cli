@@ -123,7 +123,7 @@ type mcpHTTP struct {
 var mcpHTTPFlags = []string{"no-auth", "allow-remote-no-auth", "tls", "cert", "key", "server-name"}
 
 func newMCPCmd(app *App) *cobra.Command {
-	var allowDestructive, allowInsecure bool
+	var allowDestructive, allowInsecure, readOnly bool
 	var maxResult int
 	var h mcpHTTP
 	cmd := &cobra.Command{
@@ -158,6 +158,10 @@ returns one.
 Tools that stop services or delete data (down, clean, restore, secrets
 rotate, users delete, config delete) exist only with --allow-destructive.
 
+--read-only keeps only the tools that read (doctor, status, logs, api_ping,
+query, documents_get, documents_list, users_list, config_list,
+config_whoami, version), for agents that only search or check.
+
 The init tool always keeps the secure defaults. Its options that can turn
 security off (default-users, insecure-backends, bind-ip, expose, tls, cert,
 key, from) exist only with --allow-insecure.
@@ -166,13 +170,25 @@ A tool result longer than --max-result-bytes is cut, with a note that names
 the parameters for a smaller result (tail, limit, offset).`,
 		Example: `  openarch mcp --dir my-openarch
   openarch mcp --dir my-openarch --allow-destructive
+  openarch mcp --context alice --read-only
   claude mcp add openarch -- openarch mcp --dir /path/to/my-openarch
   openarch mcp --dir my-openarch --listen ` + mcpPort + `
   ` + mcpAddExample + `
   openarch mcp --dir my-openarch --listen 0.0.0.0:` + mcpPort + ` --tls self-signed --server-name openarch.local`,
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if readOnly {
+				for _, name := range []string{"allow-destructive", "allow-insecure"} {
+					if cmd.Flags().Changed(name) {
+						return output.Usage("--"+name+" does not go with --read-only", "Remove one of the two flags.")
+					}
+				}
+			}
 			opts := app.mcpOptions(cmd.Root(), allowDestructive, allowInsecure, maxResult)
+			if readOnly {
+				opts.ReadOnly = true
+				opts.Instructions = mcpReadOnlyInstructions
+			}
 			if h.listen == "" {
 				for _, name := range mcpHTTPFlags {
 					if cmd.Flags().Changed(name) {
@@ -186,6 +202,7 @@ the parameters for a smaller result (tail, limit, offset).`,
 	}
 	cmd.Flags().BoolVar(&allowDestructive, "allow-destructive", false, "add the tools that stop services or delete data")
 	cmd.Flags().BoolVar(&allowInsecure, "allow-insecure", false, "let the init tool take the options that turn security off")
+	cmd.Flags().BoolVar(&readOnly, "read-only", false, "keep only the tools that read")
 	cmd.Flags().IntVar(&maxResult, "max-result-bytes", defaultMaxResultBytes, "cut longer tool results, for models with a small context; 0: no limit")
 	cmd.Flags().StringVar(&h.listen, "listen", "", "serve Streamable HTTP on host:port instead of stdio; a port alone means 127.0.0.1")
 	cmd.Flags().BoolVar(&h.noAuth, "no-auth", false, "serve HTTP without the bearer token")
@@ -430,10 +447,23 @@ const mcpInstructions = `These tools install and operate OpenArch with Docker Co
 ` + mcpToolUse + `
 ` + mcpSecureDefaults + `
 To install: doctor, then init, then up (it waits until OpenArch is healthy), then smoke_test.
-Every result is the JSON output of the matching openarch command. An error result starts with the exit code:
+` + mcpResults + `
+The admin password is in .env.local in the workspace; no tool returns it.
+` + mcpHelp
+
+// mcpReadOnlyInstructions are the instructions of a server with --read-only.
+const mcpReadOnlyInstructions = `These tools read the documents and the state of one OpenArch workspace or connection.
+They cannot change anything: there are no tools to install, start, stop or write.
+` + mcpToolUse + `
+` + mcpResults + `
+` + mcpHelp
+
+// mcpResults tells how to read a tool result.
+const mcpResults = `Every result is the JSON output of the matching openarch command. An error result starts with the exit code:
 1 error, 2 bad usage, 3 prerequisite missing, 4 service not healthy, 5 remote API error, 6 authentication failed.
-Follow the hint in the error. The admin password is in .env.local in the workspace; no tool returns it.
-When the hint does not fix a problem, the user can ask in the Hyland OpenArch group (` + communityURL + `);
+Follow the hint in the error.`
+
+const mcpHelp = `When the hint does not fix a problem, the user can ask in the Hyland OpenArch group (` + communityURL + `);
 bugs in the CLI for OpenArch go to https://github.com/AlfrescoLabs/openarch-cli/issues.`
 
 func buildMCPTools(root *cobra.Command, allowInsecure bool) []mcpserver.Tool {

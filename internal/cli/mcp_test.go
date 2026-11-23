@@ -53,6 +53,41 @@ func TestMCPToolsMatchCommands(t *testing.T) {
 	}
 }
 
+func TestMCPReadOnly(t *testing.T) {
+	t.Setenv(envOutput, "")
+	app := newApp(Streams{Err: &strings.Builder{}})
+	opts := app.mcpOptions(newRootCmd(app), true, false, defaultMaxResultBytes)
+	opts.ReadOnly = true
+	ctx := context.Background()
+	st, ct := mcp.NewInMemoryTransports()
+	if _, err := mcpserver.New(opts).Connect(ctx, st, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	res, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want, got []string
+	for _, tool := range mcpTools {
+		if tool.kind == mcpserver.ReadOnly {
+			want = append(want, tool.name)
+		}
+	}
+	for _, tool := range res.Tools {
+		got = append(got, tool.Name)
+	}
+	slices.Sort(want)
+	slices.Sort(got)
+	if !slices.Equal(got, want) || len(got) != 11 {
+		t.Errorf("tools with --read-only = %v, want %v", got, want)
+	}
+}
+
 func TestMCPListTools(t *testing.T) {
 	t.Setenv(envOutput, "")
 	app := newApp(Streams{Err: &strings.Builder{}})

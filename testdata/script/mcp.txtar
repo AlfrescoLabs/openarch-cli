@@ -14,6 +14,13 @@ cmp stdout first.txt
 exec openarch mcp token --rotate
 ! cmp stdout first.txt
 
+# --read-only does not go with the flags that add tools or options
+! exec openarch mcp --read-only --allow-destructive
+stderr '^Error: --allow-destructive does not go with --read-only'
+! exec openarch mcp --read-only --allow-insecure --output json
+stdout '"code": "usage"'
+stdout '--allow-insecure does not go with --read-only'
+
 # The HTTP flags need --listen
 ! exec openarch mcp --no-auth
 stderr '^Error: --no-auth needs --listen'
