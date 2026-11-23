@@ -65,6 +65,16 @@ type Tool struct {
 	Extra []string
 }
 
+// Resource is a fixed text that clients can read, for example a guide.
+type Resource struct {
+	URI         string
+	Name        string
+	Title       string
+	Description string
+	MIMEType    string
+	Text        string
+}
+
 // Runner runs the CLI with args. Progress receives stderr. It returns the
 // exit code and stdout.
 type Runner func(ctx context.Context, args []string, progress io.Writer) (code int, stdout []byte)
@@ -75,6 +85,7 @@ type Options struct {
 	Version      string
 	Instructions string
 	Tools        []Tool
+	Resources    []Resource
 	Run          Runner
 	// Prefix comes before the command of every call, for example --dir <folder>.
 	Prefix []string
@@ -106,6 +117,14 @@ func New(opts Options) *mcp.Server {
 			InputSchema: InputSchema(t),
 			Annotations: annotations(t),
 		}, handler(opts, t, &mu))
+	}
+	for _, r := range opts.Resources {
+		s.AddResource(&mcp.Resource{
+			URI: r.URI, Name: r.Name, Title: r.Title, Description: r.Description,
+			MIMEType: r.MIMEType, Size: int64(len(r.Text)),
+		}, func(context.Context, *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			return &mcp.ReadResourceResult{Contents: []*mcp.ResourceContents{{URI: r.URI, MIMEType: r.MIMEType, Text: r.Text}}}, nil
+		})
 	}
 	return s
 }

@@ -705,6 +705,8 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
 - The `init` tool always keeps the secure defaults. Its options that can turn security off
   (`default-users`, `insecure-backends`, `bind-ip`, `expose`, `tls`, `cert`, `key`, `from`) exist only
   with `--allow-insecure`.
+- The resource `openarch://guides/hxql` is a short guide to HxQL for the `query` tool
+  ([guides/hxql.md](guides/hxql.md)). The `query` tool description names it.
 - Tools never take a password and never return one. Commands that need a password as input
   (`config set`, `users add`, `users set-password`) are not tools.
 - The tool parameters are the flags of each command. Progress goes to MCP progress notifications, and logs

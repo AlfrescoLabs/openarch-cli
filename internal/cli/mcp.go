@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/AlfrescoLabs/openarch-cli/guides"
 	"github.com/AlfrescoLabs/openarch-cli/internal/certs"
 	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/localenv"
@@ -53,7 +54,7 @@ var mcpTools = []mcpTool{
 		args:     []mcpserver.Arg{{Name: "services", Description: "service names (default: all services)", Variadic: true}},
 		defaults: map[string]string{"tail": "200"}},
 	{name: "api_ping", title: "Check the OpenArch API", command: []string{"api", "ping"}, kind: mcpserver.ReadOnly},
-	{name: "query", title: "Run a query", command: []string{"query"}, kind: mcpserver.ReadOnly,
+	{name: "query", title: "Run a query", command: []string{"query"}, kind: mcpserver.ReadOnly, note: mcpQueryNote,
 		args: []mcpserver.Arg{{Name: "query", Description: "the query, for example SELECT * FROM SysFolder. Only SELECT * returns documents", Required: true}}},
 	{name: "documents_get", title: "Get a document", command: []string{"documents", "get"}, kind: mcpserver.ReadOnly,
 		args: []mcpserver.Arg{{Name: "id_or_path", Description: `document id, or path when it starts with "/" (the root is "/")`, Required: true}}},
@@ -427,6 +428,7 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive, allowInsecure bo
 		Version:          version.Get().Version,
 		Instructions:     mcpInstructions,
 		Tools:            buildMCPTools(root, allowInsecure),
+		Resources:        mcpResources,
 		Run:              a.runInProcess,
 		Prefix:           prefix,
 		AllowDestructive: allowDestructive,
@@ -434,6 +436,20 @@ func (a *App) mcpOptions(root *cobra.Command, allowDestructive, allowInsecure bo
 		Log:              a.Streams.Err,
 	}
 }
+
+// mcpHxQLGuide is the URI of the HxQL guide resource.
+const mcpHxQLGuide = "openarch://guides/hxql"
+
+// mcpResources are the guides that clients can read.
+var mcpResources = []mcpserver.Resource{{
+	URI: mcpHxQLGuide, Name: "hxql", Title: "HxQL guide", MIMEType: "text/markdown", Text: guides.HxQL,
+	Description: "How to write HxQL for the query tool: types, fields, conditions, sync, results.",
+}}
+
+// mcpQueryNote names the guide in the query tool, for hosts that do not show
+// resources to the model.
+const mcpQueryNote = "Read the resource " + mcpHxQLGuide + " (the HxQL guide) before you write a query: " +
+	"some conditions work only with sync, others only without it, and LIKE is case-sensitive."
 
 // mcpToolUse keeps models from writing tool results themselves instead of
 // calling the tools.
@@ -450,6 +466,7 @@ const mcpInstructions = `These tools install and operate OpenArch with Docker Co
 ` + mcpSecureDefaults + `
 To install: doctor, then init, then up (it waits until OpenArch is healthy), then smoke_test.
 ` + mcpResults + `
+` + mcpGuides + `
 The admin password is in .env.local in the workspace; no tool returns it.
 ` + mcpHelp
 
@@ -458,12 +475,16 @@ const mcpReadOnlyInstructions = `These tools read the documents and the state of
 They cannot change anything: there are no tools to install, start, stop or write.
 ` + mcpToolUse + `
 ` + mcpResults + `
+` + mcpGuides + `
 ` + mcpHelp
 
 // mcpResults tells how to read a tool result.
 const mcpResults = `Every result is the JSON output of the matching openarch command. An error result starts with the exit code:
 1 error, 2 bad usage, 3 prerequisite missing, 4 service not healthy, 5 remote API error, 6 authentication failed.
 Follow the hint in the error.`
+
+// mcpGuides names the guide resources.
+const mcpGuides = "The resource " + mcpHxQLGuide + " explains HxQL, the language of the query tool."
 
 const mcpHelp = `When the hint does not fix a problem, the user can ask in the Hyland OpenArch group (` + communityURL + `);
 bugs in the CLI for OpenArch go to https://github.com/AlfrescoLabs/openarch-cli/issues.`

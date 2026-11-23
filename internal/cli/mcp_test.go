@@ -16,6 +16,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/AlfrescoLabs/openarch-cli/guides"
 	"github.com/AlfrescoLabs/openarch-cli/internal/credstore"
 	"github.com/AlfrescoLabs/openarch-cli/internal/mcpserver"
 )
@@ -50,6 +51,32 @@ func TestMCPToolsMatchCommands(t *testing.T) {
 		if tool.Description == "" {
 			t.Errorf("%s has no description", tool.Name)
 		}
+	}
+}
+
+func TestMCPHxQLGuide(t *testing.T) {
+	t.Setenv(envOutput, "")
+	cs := mcpSession(t, newApp(Streams{Err: &strings.Builder{}}), false)
+	ctx := context.Background()
+	list, err := cs.ListResources(ctx, nil)
+	if err != nil || len(list.Resources) != 1 || list.Resources[0].URI != mcpHxQLGuide || list.Resources[0].MIMEType != "text/markdown" {
+		t.Fatalf("resources = %+v, %v", list, err)
+	}
+	res, err := cs.ReadResource(ctx, &mcp.ReadResourceParams{URI: mcpHxQLGuide})
+	if err != nil || len(res.Contents) != 1 || res.Contents[0].Text != guides.HxQL {
+		t.Fatalf("read = %+v, %v", res, err)
+	}
+	tools, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name == "query" && !strings.HasPrefix(tool.Description, "Read the resource "+mcpHxQLGuide) {
+			t.Errorf("query description = %q", tool.Description)
+		}
+	}
+	if !strings.Contains(mcpInstructions, mcpHxQLGuide) || !strings.Contains(mcpReadOnlyInstructions, mcpHxQLGuide) {
+		t.Error("the instructions do not name the guide")
 	}
 }
 
