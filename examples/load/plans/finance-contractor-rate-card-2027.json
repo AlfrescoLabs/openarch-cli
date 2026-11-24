@@ -1,0 +1,14 @@
+{
+  "documents": [
+    {
+      "path": "/Demo/Finance/contractor-rate-card-2027",
+      "metadata": {"sys_title": "Contractor rate card 2027"},
+      "passages": [
+        {"id": "example-finance-rate-card-2027:1:1", "location": {"text": {"page": 1, "paragraph": 1}},
+         "text": "Contractor rate card 2027. Finance pays contractors by the day. A junior developer costs 450 EUR a day, a senior developer 650 EUR and an architect 850 EUR."},
+        {"id": "example-finance-rate-card-2027:1:2", "location": {"text": {"page": 1, "paragraph": 2}},
+         "text": "Every contract above 40,000 EUR needs a second quote. Finance pays invoices 30 days after the end of the month, and travel is paid at cost with a limit of 150 EUR a night for hotels."}
+      ]
+    }
+  ]
+}

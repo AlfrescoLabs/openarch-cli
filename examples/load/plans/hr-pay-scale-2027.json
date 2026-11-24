@@ -1,0 +1,16 @@
+{
+  "documents": [
+    {
+      "path": "/Demo/HR/pay-scale-2027",
+      "metadata": {"sys_title": "Pay scale 2027"},
+      "passages": [
+        {"id": "example-hr-pay-scale-2027:1:1", "location": {"text": {"page": 1, "paragraph": 1}},
+         "text": "Pay scale 2027. This scale applies to every employee from 1 January 2027. Level 1 starts at 32,000 EUR a year and ends at 38,000 EUR. Level 2 starts at 41,000 EUR and ends at 49,000 EUR."},
+        {"id": "example-hr-pay-scale-2027:1:2", "location": {"text": {"page": 1, "paragraph": 2}},
+         "text": "Level 3 starts at 52,000 EUR and ends at 63,000 EUR. Level 4 starts at 66,000 EUR and ends at 80,000 EUR. Team leads get a yearly allowance of 3,000 EUR on top of their level."},
+        {"id": "example-hr-pay-scale-2027:2:1", "location": {"text": {"page": 2, "paragraph": 1}},
+         "text": "Raises. HR reviews every salary in April. A raise moves an employee at most two steps inside the level. A move to the next level needs the approval of the HR director."}
+      ]
+    }
+  ]
+}
