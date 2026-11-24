@@ -213,6 +213,21 @@ func setup(t *testing.T, metadata string) (Options, string, *int) {
 	return o, file, embedded
 }
 
+func TestLoadKeepsTheTitleOfThePlan(t *testing.T) {
+	e := newEngine()
+	c := client(t, e)
+	o, file, _ := setup(t, `, "sys_title": "Turn one"`)
+	if res, err := Load(context.Background(), c, []string{file}, o); err != nil || len(res.Errors) > 0 {
+		t.Fatal(err, res.Errors)
+	}
+	if got := e.docs["/corpus/s/turn-0001"]["sys_title"]; got != "Turn one" {
+		t.Errorf("title = %v, want the title of the plan", got)
+	}
+	if got := e.docs["/corpus/sources/s.pdf"]["sys_title"]; got != "s.pdf" {
+		t.Errorf("original title = %v, want the file name", got)
+	}
+}
+
 func TestLoadThenLoadAgain(t *testing.T) {
 	e := newEngine()
 	c := client(t, e)

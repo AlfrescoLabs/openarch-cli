@@ -37,6 +37,10 @@ is stored with its text and location as the embeddings of the document (see
 'openarch query --semantic'). A passage id must be unique in the repository: a
 vector with the id of another one replaces it.
 
+The title of a document is the last part of its path, unless its metadata has
+sys_title. The load sets no access entries: a document gets its access from
+its folder, so load into folders that already have the access you want.
+
 The load can run again. A stored document that already has the metadata is
 left as it is, and one with the same file gets the metadata only. Embeddings
 whose fingerprint (model and passages) is stored already are not made again.

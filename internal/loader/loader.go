@@ -515,7 +515,10 @@ func (l *loader) upsert(ctx context.Context, n *Counts, path string, metadata ma
 		props["sys_fulltextBinary"] = *fulltext
 		mixins = append(mixins, "SysHasEmbeddings")
 	}
-	props["sys_title"] = name
+	// The title is the last path segment, unless the plan gives one.
+	if _, ok := props["sys_title"]; !ok {
+		props["sys_title"] = name
+	}
 	blob, _ := doc["sysfile_blob"].(map[string]any)
 	if doc != nil {
 		if unchanged(doc, props, mixins) && blob != nil {
