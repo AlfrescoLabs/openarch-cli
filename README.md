@@ -44,7 +44,7 @@ openarch demo check --dir my-openarch
 The last line sums up the result:
 
 ```
-PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.12.0, Hyland OpenArch 1.0.90.
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.12.1, Hyland OpenArch 1.0.90.
 ```
 
 The admin gets 10 documents, alice 6, bob 6 and carol 2. To see the documents of each user, follow
@@ -111,7 +111,7 @@ The admin user is `admin`. Its password is in `my-openarch/.env.local`, as `OPEN
 
 ## Commands
 
-The current release is 0.12.0. The commands:
+The current release is 0.12.1. The commands:
 
 | Command | What it does |
 | --- | --- |
@@ -125,7 +125,7 @@ The current release is 0.12.0. The commands:
 | `openarch api ping` | Checks that OpenArch answers and that the credentials work |
 | `openarch config` | Saves connections to OpenArch servers (`set`, `get`, `list`, `use`, `delete`, `whoami`) |
 | `openarch query` | Runs a query and lists the documents found |
-| `openarch load` | Loads a corpus from load plans: documents, metadata and passages, with their vectors made by a local model. It can run again and skips what is stored |
+| `openarch load` | Loads a corpus from load plans: documents, metadata and passages, with their vectors made by a local model. It can run again and skips what is stored. Example: [examples/load](examples/load) |
 | `openarch documents` | Gets, creates and lists documents, and uploads and downloads their files |
 | `openarch users` | Manages the OpenArch users of a workspace (`list`, `add`, `set-password`, `delete`) |
 | `openarch demo` | Adds sample users and documents that show permission-aware search (`users`, `load`, `check`, `reset`). See [Demo](#demo) |
@@ -491,7 +491,7 @@ openarch demo check --dir my-openarch
 ```
 
 ```
-PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.12.0, Hyland OpenArch 1.0.90.
+PASS: 4 users, 10 documents, 88 requests (lists, title queries, reads), 0 leaks, 0 problems. CLI for OpenArch 0.12.1, Hyland OpenArch 1.0.90.
 ```
 
 A leak is the name, the code or the content of a document the user may not read. A problem is a
