@@ -693,7 +693,8 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
 - `--tls self-signed` or `--tls custom --cert <file> --key <file>` serves HTTPS. The start result names the
   self-signed certificate that clients must trust.
 - HTTP is stateless, as MCP 2026-07-28 defines it: every request stands alone, with no session. Clients on
-  older protocol versions work too.
+  older protocol versions work too. [examples/mcp-stateless](examples/mcp-stateless) runs two copies of the
+  server behind a round-robin proxy for one agent, and checks the wire log.
 - One server serves every client, so commands that change the workspace still run one at a time.
 
 - `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
