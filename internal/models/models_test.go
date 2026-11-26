@@ -49,3 +49,14 @@ func TestUnreachable(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestURL(t *testing.T) {
+	t.Setenv("OPENARCH_MODEL_URL", "")
+	if got := URL(); got != DefaultURL {
+		t.Errorf("URL() = %q, want %q", got, DefaultURL)
+	}
+	t.Setenv("OPENARCH_MODEL_URL", "http://model-runner.docker.internal/engines/v1")
+	if got := URL(); got != "http://model-runner.docker.internal/engines/v1" {
+		t.Errorf("URL() = %q, want the OPENARCH_MODEL_URL value", got)
+	}
+}

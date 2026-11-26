@@ -64,7 +64,7 @@ openarch load <plan>... [flags]
       --max-passage-bytes int   refuse longer passages (UTF-8 bytes) instead of letting the model cut them; 0: no limit (default 8000)
       --mixin strings           mixin type for every loaded document (repeatable)
       --model string            embedding model on Docker Model Runner (1024 dimensions or fewer); default from OPENARCH_EMBED_MODEL when set (default "ai/mxbai-embed-large")
-      --model-url string        OpenAI-compatible API of Docker Model Runner (default "http://localhost:12434/engines/v1")
+      --model-url string        OpenAI-compatible API of Docker Model Runner; default from OPENARCH_MODEL_URL when set (default "http://localhost:12434/engines/v1")
       --password string         password (insecure: it stays in the shell history; prefer --password-stdin or env OPENARCH_PASSWORD)
       --password-stdin          read the password from stdin
       --root string             folder that the original file names are relative to (default ".")

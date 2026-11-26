@@ -22,7 +22,7 @@ type modelFlags struct {
 
 func (m *modelFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&m.model, "model", models.EmbedModel(), "embedding model on Docker Model Runner (1024 dimensions or fewer); default from OPENARCH_EMBED_MODEL when set")
-	cmd.Flags().StringVar(&m.url, "model-url", models.DefaultURL, "OpenAI-compatible API of Docker Model Runner")
+	cmd.Flags().StringVar(&m.url, "model-url", models.URL(), "OpenAI-compatible API of Docker Model Runner; default from OPENARCH_MODEL_URL when set")
 }
 
 // embedder returns a function that makes vectors with the model, and turns the

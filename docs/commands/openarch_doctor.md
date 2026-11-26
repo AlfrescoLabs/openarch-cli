@@ -38,7 +38,7 @@ openarch doctor [flags]
       --check strings      run only this check (repeatable)
   -h, --help               help for doctor
       --model string       embedding model on Docker Model Runner (1024 dimensions or fewer); default from OPENARCH_EMBED_MODEL when set (default "ai/mxbai-embed-large")
-      --model-url string   OpenAI-compatible API of Docker Model Runner (default "http://localhost:12434/engines/v1")
+      --model-url string   OpenAI-compatible API of Docker Model Runner; default from OPENARCH_MODEL_URL when set (default "http://localhost:12434/engines/v1")
       --port ints          host port that must be free (repeatable, default: the workspace ports, or 8080)
 ```
 

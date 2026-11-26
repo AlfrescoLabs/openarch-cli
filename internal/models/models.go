@@ -19,6 +19,15 @@ import (
 // DefaultURL is the Docker Model Runner API on the host, with TCP access on.
 const DefaultURL = "http://localhost:12434/engines/v1"
 
+// URL is the model API to use by default: OPENARCH_MODEL_URL when set, else
+// DefaultURL. A container sets it, because localhost there is not the host.
+func URL() string {
+	if u := os.Getenv("OPENARCH_MODEL_URL"); u != "" {
+		return u
+	}
+	return DefaultURL
+}
+
 // DefaultEmbedModel makes vectors of 1024 dimensions, the size of the vector
 // index of OpenArch.
 const DefaultEmbedModel = "ai/mxbai-embed-large"
