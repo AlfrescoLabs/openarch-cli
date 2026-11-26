@@ -697,6 +697,17 @@ openarch mcp --dir /path/to/my-openarch --listen 0.0.0.0:8765 --tls self-signed 
   server behind a round-robin proxy for one agent, and checks the wire log.
 - One server serves every client, so commands that change the workspace still run one at a time.
 
+In a container, for the Docker MCP Gateway or any client that starts a Docker image: each release has
+the image `ghcr.io/alfrescolabs/openarch` (linux/amd64, linux/arm64, signed with cosign). It runs
+`openarch mcp --read-only` on stdio and takes the connection from `OPENARCH_URL`, `OPENARCH_USER` and
+`OPENARCH_PASSWORD`. [examples/mcp-gateway](examples/mcp-gateway) has the gateway server entry and
+runs it as alice and as bob.
+
+```
+docker run --rm -i -e OPENARCH_URL=http://host.docker.internal:8080 -e OPENARCH_USER=alice \
+  -e OPENARCH_PASSWORD ghcr.io/alfrescolabs/openarch
+```
+
 - `--dir` or `--context` pins the server to one workspace or connection. The default is the current folder.
 - Tools that stop services or delete data (`down`, `clean`, `restore`, `secrets_rotate`, `users_delete`,
   `config_delete`) exist only with `--allow-destructive`.

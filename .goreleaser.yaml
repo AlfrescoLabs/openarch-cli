@@ -57,6 +57,41 @@ signs:
       - "--yes"
     artifacts: checksum
 
+# Image of the MCP server (Dockerfile), for Docker and the Docker MCP Gateway.
+# Prereleases do not move the latest tag.
+dockers_v2:
+  - id: openarch
+    ids: [openarch]
+    images:
+      - ghcr.io/alfrescolabs/openarch
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: CLI for OpenArch
+      org.opencontainers.image.description: MCP server of the CLI for OpenArch (unofficial, not a Hyland product)
+      org.opencontainers.image.source: https://github.com/AlfrescoLabs/openarch-cli
+      org.opencontainers.image.url: https://github.com/AlfrescoLabs/openarch-cli/tree/main/examples/mcp-gateway
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.licenses: Apache-2.0
+    annotations:
+      org.opencontainers.image.description: MCP server of the CLI for OpenArch (unofficial, not a Hyland product)
+      org.opencontainers.image.source: https://github.com/AlfrescoLabs/openarch-cli
+      org.opencontainers.image.licenses: Apache-2.0
+
+# Keyless signature of the image, from the GitHub Actions OIDC identity, by digest.
+docker_signs:
+  - cmd: cosign
+    args:
+      - sign
+      - "${artifact}@${digest}"
+      - "--yes"
+
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 

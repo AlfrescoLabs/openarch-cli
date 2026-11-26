@@ -1,0 +1,37 @@
+# Server entry for the Docker MCP Gateway: the image of the CLI for OpenArch,
+# which runs `openarch mcp --read-only` on stdin and stdout.
+# Copy it to ~/.docker/mcp/catalogs/, then add it to a profile with:
+#   docker mcp profile create --name openarch --server file://$HOME/.docker/mcp/catalogs/openarch.yaml
+name: openarch
+title: Hyland OpenArch (CLI for OpenArch)
+type: server
+image: ghcr.io/alfrescolabs/openarch:latest
+description: >-
+  Search and read the documents of Hyland OpenArch as one user, with that
+  user's permissions. Read-only. Unofficial, from AlfrescoLabs.
+icon: https://avatars.githubusercontent.com/u/16133585?s=200&v=4
+readme: https://github.com/AlfrescoLabs/openarch-cli/tree/main/examples/mcp-gateway
+command: ["mcp", "--read-only"]
+secrets:
+  - name: openarch.password
+    env: OPENARCH_PASSWORD
+    example: the password of the user
+env:
+  - name: OPENARCH_URL
+    value: "{{openarch.url}}"
+  - name: OPENARCH_USER
+    value: "{{openarch.user}}"
+config:
+  - name: openarch
+    description: The Hyland OpenArch server and the user that the agent acts as
+    type: object
+    properties:
+      url:
+        type: string
+        description: >-
+          Address of Hyland OpenArch as seen from a container, for example
+          http://host.docker.internal:8080
+      user:
+        type: string
+        description: The user name; the agent sees only what this user can read
+    required: [url, user]
